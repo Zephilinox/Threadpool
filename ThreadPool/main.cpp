@@ -1,245 +1,118 @@
+//SELF
+#include "Threadpool.hpp"
+
 //STD
-#include <thread>
-#include <functional>
-#include <queue>
-#include <future>
 #include <iostream>
-#include <utility>
-#include <chrono>
-#include <array>
-#include <string>
-#include <cassert>
 
-using namespace std::chrono_literals;
-
-enum class ThreadPoolDestructorPolicy
-{
-	wait_for_jobs_to_finish,
-	leave_jobs_unfinished
-};
-
-template <ThreadPoolDestructorPolicy destructor_policy = ThreadPoolDestructorPolicy::wait_for_jobs_to_finish,
-          typename TraceFunctor = void>
-class ThreadPool final
-{
-private:
-	enum class worker_type
-	{
-		wait_for_new_job,
-		wait_until_jobs_finished,
-		one_job,
-	};
-
-	template <worker_type type>
-	auto make_worker()
-	{
-		auto worker = [this]() -> void
-		{
-			std::unique_lock<std::mutex> l(mutex, std::defer_lock_t{});
-
-			while (true)
-			{
-				l.lock();
-				if constexpr (type == worker_type::wait_for_new_job)
-				{
-					cv.wait(l, [this]()
-						{
-							return !running || !jobs.empty();
-						});
-
-					if (!running)
-						return;
-				}
-				else if constexpr (type == worker_type::wait_until_jobs_finished
-					|| type == worker_type::one_job)
-				{
-					if (!running || jobs.empty())
-						return;
-				}
-
-				auto job = std::move(jobs.front());
-				jobs.pop();
-				jobs_to_process--;
-
-				l.unlock();
-
-				job();
-
-				if constexpr (type == worker_type::one_job)
-					return;
-			}
-		};
-
-		return worker;
-	}
-
-public:
-	explicit ThreadPool(unsigned int thread_count = std::max(std::thread::hardware_concurrency() - 1, 1U))
-	{
-		if constexpr (std::is_same_v<TraceFunctor, void> == false)
-			TraceFunctor::trace("spawning " + std::to_string(thread_count) + " worker threads");
-
-		for (unsigned int i = 0; i < thread_count; ++i)
-			threads.emplace_back(make_worker<worker_type::wait_for_new_job>());
-	}
-
-	ThreadPool(const ThreadPool& other) = delete;
-	ThreadPool(ThreadPool&& other) = delete;
-	ThreadPool& operator=(const ThreadPool& other) = delete;
-	ThreadPool& operator=(ThreadPool&& other) = delete;
-
-	~ThreadPool() noexcept
-	{
-		if constexpr (destructor_policy == ThreadPoolDestructorPolicy::wait_for_jobs_to_finish)
-		{
-			while (jobs_to_process)
-			{
-				if constexpr (std::is_same_v<TraceFunctor, void> == false)
-					TraceFunctor::trace("\t" + std::to_string(jobs_to_process) + " jobs left");
-				std::this_thread::sleep_for(100ms);
-			}
-		}
-		else
-		{
-			if constexpr (std::is_same_v<TraceFunctor, void> == false)
-				TraceFunctor::trace("leaving " + std::to_string(jobs_to_process) + " jobs unfinished");
-
-			std::scoped_lock<std::mutex> l(mutex);
-			while (jobs.size())
-				jobs.pop();
-			jobs_to_process = 0;
-		}
-
-		running = false;
-		cv.notify_all();
-
-		for (auto& thread : threads)
-		{
-			if constexpr (std::is_same_v<TraceFunctor, void> == false)
-				TraceFunctor::trace("waiting for worker to finish last job");
-			thread.join();
-		}
-	}
-
-	void help()
-	{
-		if (!jobs_to_process)
-			return;
-
-		make_worker<worker_type::wait_until_jobs_finished>()();
-	}
-
-	void help_once()
-	{
-		if (!jobs_to_process)
-			return;
-
-		make_worker<worker_type::one_job>()();
-	}
-
-	template <typename F, typename... Args>
-	auto addJob(F&& func, Args&&... args)
-	{
-		auto task = [func = std::forward<F>(func), tuple_args = std::make_tuple(std::forward<Args>(args)...)]() mutable
-		{
-			return std::apply([func = std::forward<F>(func)](auto&&... tuple_args)
-			{
-				return func(tuple_args...);
-			}, std::move(tuple_args));
-		};
-
-		auto job = std::make_shared<std::packaged_task<std::invoke_result_t<F, Args...>()>>(std::move(task));
-		auto future = job->get_future();
-
-		auto perform_job = [job = std::move(job)]()
-		{
-			(*job)();
-		};
-
-		{
-			std::scoped_lock<std::mutex> l(mutex);
-			jobs.emplace(std::move(perform_job));
-		}
-
-		jobs_to_process++;
-		cv.notify_one();
-		return future;
-	}
-
-private:
-	std::queue<std::function<void()>> jobs;
-	std::mutex mutex;
-	std::condition_variable cv;
-
-	std::vector<std::thread> threads;
-	std::atomic<bool> running = true;
-	std::atomic<unsigned int> jobs_to_process = 0;
-};
-
-class ThreadPoolConsoleTracer
+class ThreadpoolConsoleTracer
 {
 public:
-    static void trace(std::string str)
-    {
+	static void trace(const std::string& str)
+	{
 		std::cout << str << "\n";
-    }
+	}
 };
 
-template <ThreadPoolDestructorPolicy destructor_policy>
-using ThreadPoolConsoleTracing = ThreadPool<ThreadPoolDestructorPolicy::wait_for_jobs_to_finish, ThreadPoolConsoleTracer>;
+template <
+	ThreadpoolPolicyPendingWork pending_work_policy = ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
+	ThreadpoolPolicyNewWork new_work_policy = ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
+using ThreadpoolConsoleTracing = Threadpool<pending_work_policy, new_work_policy, ThreadpoolConsoleTracer>;
 
 int main()
 {
-	std::vector<std::future<int>> futures;
-	std::vector<std::future<float>> futures2;
-	futures.reserve(1000);
+	std::vector<std::optional<std::future<int>>> futures;
+	std::vector<std::optional<std::future<int>>> futures2;
+	
+	float task_baseline_nanoseconds = 0;
 
-	static constexpr auto lambda = [](int something) -> int
+	constexpr auto task_iterations = 1;
+	constexpr auto thread_count = 1;
+	constexpr auto task_count = 100000;
+	futures.reserve(task_count);
+	futures2.reserve(task_count);
+	
+	constexpr auto sleep_ms = 0;
+
+	auto lambda = [task_iterations](int something) -> int
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds{ 1 });
-		return 1;
+		std::this_thread::sleep_for(std::chrono::milliseconds{sleep_ms});
+		//++result;
+		volatile int result = 0;
+		for (int i = 0; i < task_iterations; ++i)
+		{
+			++result;
+		}
+		return something;
 	};
+	
+	{
+		volatile int result = 0;
+		auto start_time = std::chrono::high_resolution_clock::now();
+		for (int i = 0; i < task_count; ++i)
+		{
+			result += lambda(1);
+		}
+		const auto end_time = std::chrono::high_resolution_clock::now();
+		task_baseline_nanoseconds = static_cast<float>(std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count());
+	}
 
-	int result = 0;
-
-	const auto start_time = std::chrono::high_resolution_clock::now();
+	float baseline_nanoseconds = 0;
 
 	{
-		ThreadPool<ThreadPoolDestructorPolicy::leave_jobs_unfinished, ThreadPoolConsoleTracer> pool(10);
+		auto start_time = std::chrono::high_resolution_clock::now();
 
-		const auto lambda2 = [&](int something, int something2) -> float
 		{
-			auto future = pool.addJob(lambda, something2);
-			pool.help();
-			future.wait();
-			return 1;
-		};
-
-		for (int k = 0; k < 10; ++k)
-		{
-			for (int i = 0; i < 100; ++i)
-				futures.emplace_back(pool.addJob(lambda, 1));
-
-			for (int i = 0; i < 100; ++i)
-				futures2.emplace_back(pool.addJob(lambda2, 1, 2));
-
-			pool.help();
-
-			for (auto& future : futures)
-				result += future.get();
-
-			for (auto& future : futures2)
-				result += static_cast<int>(future.get());
-
-			futures.clear();
-			futures2.clear();
+			Threadpool<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(thread_count);
 		}
 
-		for (int i = 0; i < 1000; ++i)
-			futures2.emplace_back(pool.addJob(lambda2, 1, 2));
+		const auto end_time = std::chrono::high_resolution_clock::now();
+		baseline_nanoseconds = static_cast<float>(std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count());
+	}
+	
+	std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
+
+	{
+		ThreadpoolConsoleTracing<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> producer(1);
+		ThreadpoolConsoleTracing<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(1);
+
+		for (int i = 0; i < task_count; ++i)
+		{
+			futures.emplace_back(producer.push_job([&]()
+			{
+				auto maybe_future = consumer.push_job(lambda, 1);
+				if (maybe_future)
+					return maybe_future->get();
+				
+				return 0;
+			}));
+		}
+
+		consumer.wait_all();
+		//producer.wait_all();
 	}
 
 	const auto end_time = std::chrono::high_resolution_clock::now();
-	std::cout << "took " << static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()) / 1000.0f << " seconds\n";
-	return 0;
+	const auto nanoseconds = static_cast<float>(std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count());
+	const auto nanoseconds_diff = nanoseconds - baseline_nanoseconds;
+	const auto milliseconds = nanoseconds / 1000000.0f;
+	const auto milliseconds_diff = nanoseconds_diff / 1000000.0f;
+	const auto baseline_milliseconds = baseline_nanoseconds / 1000000.0f;
+	std::cout << "baseline is " << baseline_milliseconds << "ms\n";
+	std::cout << "took " << milliseconds_diff << " ms (" << milliseconds << "ms - " << baseline_milliseconds << "ms)\n";
+	const auto task_baseline_total_ms = task_baseline_nanoseconds / 1000000.0f;
+	std::cout << "took " << milliseconds_diff - task_baseline_total_ms << "ms excluding task baseline of " << task_baseline_total_ms << "ms\n";
+	const auto nanoseconds_per_task = nanoseconds_diff / static_cast<float>(task_count);
+	const auto nanoseconds_per_task_diff = (nanoseconds_diff - task_baseline_nanoseconds) / static_cast<float>(task_count);
+	std::cout << "baseline per-task processing time is " << std::fixed << task_baseline_nanoseconds / 1000000.0f / static_cast<float>(task_count) << "ms\n";
+	std::cout << "which is " << std::fixed << nanoseconds_per_task  / 1000000.0f << "ms per task inc. baseline\n";
+	std::cout << "which is " << std::fixed << nanoseconds_per_task_diff  / 1000000.0f << "ms per task\n";
+	std::cout << "which is " << std::fixed << (nanoseconds_per_task_diff  / 1000000.0f) * static_cast<float>(thread_count) << "ms per task * thread_count\n";
+
+	int result = 0;
+	for (auto& future : futures)
+	{
+	    if (future)
+	        result += future.value().get();
+	}
+	return result;
 }
