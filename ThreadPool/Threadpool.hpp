@@ -134,6 +134,11 @@ public:
 	
 private:
 	using WorkerType = detail::WorkerType;
+	
+	static constexpr bool has_trace_functor()
+	{
+		return !std::is_same_v<TraceFunctor, void>;
+	}
 
 	template <WorkerType type>
 	auto make_worker(unsigned int thread_id);
@@ -179,7 +184,7 @@ template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename Tra
 Threadpool<A, B, TraceFunctor>::Threadpool(unsigned int thread_count)
 	: m_total_work_executed(thread_count + 1)
 {
-	if constexpr (std::is_same_v<TraceFunctor, void> == false)
+	if constexpr (has_trace_functor())
 		TraceFunctor::trace("spawning " + std::to_string(thread_count) + " worker threads");
 
 	for (unsigned int i = 0; i < thread_count; ++i)
@@ -200,7 +205,7 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 {
 	m_is_stopping = true;
 	
-	if constexpr (std::is_same_v<TraceFunctor, void> == false)
+	if constexpr (has_trace_functor())
 		TraceFunctor::trace("stopping threadpool");
 
 	if constexpr (new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping)
@@ -210,7 +215,7 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 		// A thread may have been in the middle of adding a new job when we blocked new work, so wait for it to finish
 		while (m_work_almost_pushed)
 		{
-			if constexpr (std::is_same_v<TraceFunctor, void> == false)
+			if constexpr (has_trace_functor())
 				TraceFunctor::trace("\twaiting for " + std::to_string(m_work_almost_pushed) + " threads to stop pushing work");
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -221,7 +226,7 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 	{
 		while (m_pending_work_to_process)
 		{
-			if constexpr (std::is_same_v<TraceFunctor, void> == false)
+			if constexpr (has_trace_functor())
 				TraceFunctor::trace("\t" + std::to_string(m_pending_work_to_process) + " pending work left");
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -229,7 +234,7 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 	}
 	else if constexpr (pending_work_policy == ThreadpoolPolicyPendingWork::leave_work_unfinished)
 	{
-		if constexpr (std::is_same_v<TraceFunctor, void> == false)
+		if constexpr (has_trace_functor())
 			TraceFunctor::trace("\tleaving " + std::to_string(m_pending_work_to_process) + " pending work unfinished");
 
 		std::scoped_lock lock(m_pending_work_mutex);
@@ -247,7 +252,7 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 
 	while (m_work_executing)
 	{
-		if constexpr (std::is_same_v<TraceFunctor, void> == false)
+		if constexpr (has_trace_functor())
 			TraceFunctor::trace("\twaiting for " + std::to_string(m_work_executing) + " work to finish executing...");
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -255,14 +260,14 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 	
 	m_is_stopped = true;
 	
-	if constexpr (std::is_same_v<TraceFunctor, void> == false)
+	if constexpr (has_trace_functor())
 		TraceFunctor::trace("\tstopped threadpool");
 
 	for (std::size_t thread_id = 0; thread_id < m_threads.size(); ++thread_id)
 	{
 		auto& thread = m_threads[thread_id];
 
-		if constexpr (std::is_same_v<TraceFunctor, void> == false)
+		if constexpr (has_trace_functor())
 		{
 			TraceFunctor::trace("\tjoining worker thread " + std::to_string(thread_id + 1) + "/" + std::to_string(m_threads.size()) + " after executing " + std::to_string(m_total_work_executed[thread_id]) + " units of work");
 		}
@@ -270,17 +275,17 @@ Threadpool<pending_work_policy, new_work_policy, TraceFunctor>::~Threadpool() no
 		thread.join();
 	}
 	
-	if constexpr (std::is_same_v<TraceFunctor, void> == false)
+	if constexpr (has_trace_functor())
 	{
 		TraceFunctor::trace("\t" + std::to_string(m_total_work_executed[m_threads.size()]) + " units of work were executed by others");
 
 		if (m_pending_work_to_process)
 		{
-			TraceFunctor::trace("\twarning: " + std::to_string(m_pending_work_to_process) + " pending work was added to the queue during destruction, and did not execute");
+			TraceFunctor::trace("\tinternal error: " + std::to_string(m_pending_work_to_process) + " pending work was added to the queue during destruction, and did not execute");
 		}
 	}
 
-	if constexpr (std::is_same_v<TraceFunctor, void> == false)
+	if constexpr (has_trace_functor())
 		TraceFunctor::trace("\tdestroyed threadpool");
 }
 
