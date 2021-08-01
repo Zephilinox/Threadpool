@@ -277,7 +277,7 @@ private:
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename Tracer>
 Threadpool<A, B, Tracer>::Threadpool(unsigned int thread_count)
-    : m_total_work_executed(thread_count + 1)
+    : m_total_work_executed(thread_count + 1U)
 {
     if constexpr (has_tracing_v)
         Tracer::on_construction_start(*this, thread_count);
