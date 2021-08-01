@@ -37,6 +37,8 @@ public:
 
     static void log(LogLevel level, const std::string& str)
     {
+        static std::mutex mutex;
+        std::scoped_lock lock(mutex);
         std::cout << log_level_to_string(level) << " " << str << "\n";
     }
 };

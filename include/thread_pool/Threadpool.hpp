@@ -151,7 +151,7 @@ public:
     using tracer_t = Tracer;
     using WorkerType = detail::WorkerType;
 
-    explicit Threadpool(unsigned int thread_count = std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1, 1U));
+    explicit Threadpool(unsigned int thread_count = std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U));
 
     Threadpool(const Threadpool& other) = delete;
     Threadpool(Threadpool&& other) = delete;
