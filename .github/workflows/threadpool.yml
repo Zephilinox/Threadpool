@@ -149,6 +149,10 @@ jobs:
         working-directory: build
         run: ctest --C ${{ matrix.config.build_type }} --output-on-failure
 
+      - name: Benchmarks
+        shell: bash
+        run: cmake --build build --config ${{ matrix.config.build_type }} --target threadpool_benchmarks_execute
+
       - name: Pack
         shell: bash
         working-directory: instdir

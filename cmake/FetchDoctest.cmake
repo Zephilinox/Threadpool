@@ -6,3 +6,5 @@ CPMAddPackage(
     OPTIONS
         DOCTEST_WITH_MAIN_IN_STATIC_LIB "OFF"
 )
+
+set_target_properties(doctest PROPERTIES FOLDER dependencies)
