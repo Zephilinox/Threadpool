@@ -40,8 +40,7 @@ static auto benchmark_threadpool_sleepy_task_push(benchmark::State& state) -> vo
 {
     Threadpool<ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
     Threadpool producers(state.range(0));
-    auto produce = [&threadpool]()
-    {
+    auto produce = [&threadpool]() {
         threadpool.push_task(&sleepy_task);
     };
 
@@ -75,18 +74,18 @@ BENCHMARK(benchmark_sleepy_task_execute)
 BENCHMARK(benchmark_sleepy_task_std_function_execute)
     ->UseRealTime();
 BENCHMARK(benchmark_threadpool_sleepy_task_push)
-    ->Args({1})
-    ->Args({2})
-    ->Args({4})
-    ->Args({8})
-    ->Args({16})
-    ->Args({32})
+    ->Args({ 1 })
+    ->Args({ 2 })
+    ->Args({ 4 })
+    ->Args({ 8 })
+    ->Args({ 16 })
+    ->Args({ 32 })
     ->UseRealTime();
 BENCHMARK(benchmark_threadpool_sleepy_task_execute)
-    ->Args({1})
-    ->Args({2})
-    ->Args({4})
-    ->Args({8})
-    ->Args({16})
-    ->Args({32})
+    ->Args({ 1 })
+    ->Args({ 2 })
+    ->Args({ 4 })
+    ->Args({ 8 })
+    ->Args({ 16 })
+    ->Args({ 32 })
     ->UseRealTime();

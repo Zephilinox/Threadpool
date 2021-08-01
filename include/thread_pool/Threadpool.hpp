@@ -52,7 +52,7 @@ public:
         if constexpr (has_logger_v)
             Logger::log(Logger::LogLevel::info, "threadpool: construction started. spawning " + std::to_string(thread_count) + " worker threads");
     }
-    
+
     template <typename Threadpool>
     static void on_construction_end(const Threadpool& pool) noexcept
     {
@@ -117,9 +117,8 @@ public:
     {
         if constexpr (has_logger_v)
         {
-             Logger::log(Logger::LogLevel::info,
-                 "threadpool: joining worker thread " + std::to_string(thread_id + 1) + "/" + std::to_string(pool.m_threads.size()) +
-                 " after executing " + std::to_string(pool.m_total_work_executed[thread_id]) + " units of work");
+            Logger::log(Logger::LogLevel::info,
+                        "threadpool: joining worker thread " + std::to_string(thread_id + 1) + "/" + std::to_string(pool.m_threads.size()) + " after executing " + std::to_string(pool.m_total_work_executed[thread_id]) + " units of work");
         }
     }
 
@@ -128,9 +127,8 @@ public:
     {
         if constexpr (has_logger_v)
         {
-             Logger::log(Logger::LogLevel::error,
-                 "threadpool: internal error, " + std::to_string(pool.m_pending_work_to_process) +
-                 " pending work was added to the queue during destruction, which was not executed");
+            Logger::log(Logger::LogLevel::error,
+                        "threadpool: internal error, " + std::to_string(pool.m_pending_work_to_process) + " pending work was added to the queue during destruction, which was not executed");
         }
     }
 };
@@ -146,7 +144,7 @@ class Threadpool final
 public:
     static constexpr auto policy_pending_work_v = pending_work_policy;
     static constexpr auto policy_new_work_v = new_work_policy;
-    static constexpr bool has_tracing_v =  !std::is_same_v<Tracer, void>;
+    static constexpr bool has_tracing_v = !std::is_same_v<Tracer, void>;
     using tracer_t = Tracer;
     using WorkerType = detail::WorkerType;
 
@@ -232,7 +230,6 @@ public:
     auto push_task(F&& func, Args&&... args);
 
 private:
-
     template <WorkerType type>
     auto make_worker(unsigned int thread_id);
 
