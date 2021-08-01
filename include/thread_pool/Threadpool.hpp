@@ -329,7 +329,7 @@ Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
     else if constexpr (pending_work_policy == ThreadpoolPolicyPendingWork::leave_work_unfinished)
     {
         if constexpr (has_tracing_v)
-            Tracer::on_leave_pending_work_unfinished();
+            Tracer::on_leave_pending_work_unfinished(*this);
 
         std::scoped_lock lock(m_pending_work_mutex);
         //clear the m_pending_work
