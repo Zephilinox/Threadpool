@@ -1,0 +1,208 @@
+name: threadpool
+
+on:
+  push:
+  pull_request:
+  release:
+  
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "ubuntu-gcc",
+            os: ubuntu-latest,
+            build_type: "Release",
+            cc: "gcc",
+            cxx: "g++",
+            generators: "Ninja",
+            ccache: "ON",
+          }
+        - {
+            name: "ubuntu-clang",
+            os: ubuntu-latest,
+            artifact: "ubuntu-clang.7z",
+            build_type: "Release",
+            cc: "clang",
+            cxx: "clang++",
+            generators: "Ninja",
+            ccache: "ON",
+          }
+        - {
+            name: "windows-msvc-vs2019",
+            os: windows-latest,
+            build_type: "Release",
+            cc: "cl",
+            cxx: "cl",
+            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
+            generators: "Visual Studio 16 2019",
+            ccache: "OFF",
+          }
+        - {
+            name: "macos-clang",
+            os: macos-latest,
+            build_type: "Release",
+            cc: "clang",
+            cxx: "clang++",
+            generators: "Ninja",
+            ccache: "ON",
+          }
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Print env
+        run: |
+          echo github.event.action: ${{ github.event.action }}
+          echo github.event_name: ${{ github.event_name }}
+
+      - name: ccache
+        if: startsWith(matrix.config.ccache, 'ON')
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-${{ matrix.build_type }}
+          max-size: 500M
+
+      - name: CPM Cache
+        id: cache-cpm
+        uses: actions/cache@v2
+        with:
+          path: .cpmcache
+          key: ${{ runner.os }}-cpm-${{ hashFiles('**/') }}
+          restore-keys: |
+            ${{ runner.os }}-cpm-
+
+      - name: Install dependencies on windows
+        if: startsWith(matrix.config.os, 'windows')
+        run: |
+          choco install ninja
+          ninja --version
+          cmake --version
+
+      - name: Install dependencies on ubuntu
+        if: startsWith(matrix.config.name, 'ubuntu')
+        run: |
+          sudo apt-get install ninja-build
+          ninja --version
+          cmake --version
+          gcc --version
+          clang --version
+
+      - name: Install valgrind on ubuntu
+        if: matrix.config.valgrind == 'ON'
+        run: |
+          sudo apt-get install valgrind
+          valgrind --version
+
+      - name: Install dependencies on macos
+        if: startsWith(matrix.config.os, 'macos')
+        run: |
+          brew install p7zip cmake ninja
+          ninja --version
+          cmake --version
+
+      - name: Configure (CCACHE)
+        if: startsWith(matrix.config.ccache, 'ON')
+        shell: bash
+        run: |
+          mkdir build
+          mkdir instdir
+          export CC=${{ matrix.config.CC }}
+          export CXX=${{ matrix.config.CXX }}
+          cmake \
+            -S . \
+            -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -G "${{ matrix.config.generators }}"
+
+      - name: Configure
+        if: startsWith(matrix.config.ccache, 'OFF')
+        shell: bash
+        run: |
+          mkdir build
+          mkdir instdir
+          export CC=${{ matrix.config.CC }}
+          export CXX=${{ matrix.config.CXX }}
+          cmake \
+            -S . \
+            -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
+            -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -G "${{ matrix.config.generators }}"
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config ${{ matrix.config.build_type }}
+
+      - name: Install Strip
+        shell: bash
+        run: cmake --install build --strip --prefix=instdir
+
+      - name: Tests
+        shell: bash
+        working-directory: build
+        run: ctest --C ${{ matrix.config.build_type }} --output-on-failure
+
+      - name: Pack
+        shell: bash
+        working-directory: instdir
+        run: |
+          ls -laR
+          7z a ../${{ matrix.config.name }}.7z .
+
+      - name: Upload Build Developer Logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'z-${{ matrix.config.name }}-build_dev_logs'
+          path: |
+            ./build/**/*.txt
+            ./build/**/*.gcda
+            ./build/**/*.gcno
+            ./build/**/*codecov*
+            ./build/**/*.xml
+            ./build/**/*.cmake
+            ./build/**/*.log
+            ./build/**/*.json
+            ./build/**/*.gcov
+            ./build/**/*.info
+            ./build/**/.*
+            !./build/_deps
+          retention-days: 1
+
+      - name: Upload
+        uses: actions/upload-artifact@v1
+        with:
+          path: ./${{ matrix.config.name }}.7z
+          name: ${{ matrix.config.name }}.7z
+
+      - name: Upload release asset
+        if: github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'created')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ matrix.config.name }}.7z
+          asset_name: ${{ matrix.config.name }}.7z.zip
+          asset_content_type: application/zip
+
+  clang-format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Formatting
+        uses: DoozyX/clang-format-lint-action@v0.12
+        with:
+          exclude: 'build instdir'
+          clangFormatVersion: 9
+          inplace: false
