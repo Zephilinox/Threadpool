@@ -28,7 +28,9 @@ int main()
 
 The default number of threads is `std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U)` which will be between 1 and 1 less than the max number of logical cores on your system.
 
-# Jobs
+# Work
+
+### Jobs
 
 A Job is a unit of work that can be tracked via `std::future`.
 You can block waiting for the future to become ready, regardless of if the job returns a value or void.
@@ -37,10 +39,10 @@ You can block waiting for the future to become ready, regardless of if the job r
 zx::Threadpool pool(1);
 auto maybe_future = pool.push_job([](){ /* do nothing */ });
 if (maybe_future)
-    future.get(); //block waiting for job to complete
+    maybe_future->wait(); //block waiting for job to complete
 ```
 
-# Tasks
+### Tasks
 
 A Task is a unit of work that can't be tracked.
 By design, there's no way to wait for that specific task to complete.
@@ -55,7 +57,7 @@ pool.wait_all();
 
 # Policies
 
-## New Work
+### New Work
 
 The `zx::ThreadpoolPolicyNewWork` policy determines whether pushing new work to the threadpool can fail. By default this is `configurable_and_forbidden_when_stopping` which allows users to toggle when the threadpool is accepting new work, as well as forbid new work from being pushed while the threadpool is stopping.
 
@@ -66,10 +68,10 @@ Changing the policy to `zx::ThreadpoolPolicyNewWork::always_allow` will cause `p
 ```cpp
 zx::Threadpool<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish, zx::ThreadpoolPolicyNewWork::always_allow> pool(1);
 auto future = pool.push_job([](){ /* do nothing */ });
-future.get(); //block waiting for job to complete
+future.wait(); //block waiting for job to complete
 ```
 
-## Pending Work
+### Pending Work
 
 The `zx::ThreadpoolPolicyPendingWork` policy determines whether work in the queue when the threadpool is stopping should be ignored, or completed. By default this is `wait_for_work_to_finish` which will cause the destructor to block until all jobs have completed.
 
@@ -80,19 +82,20 @@ Changing the policy to `zx::ThreadpoolPolicyPendingWork::leave_work_unfinished` 
 Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc), as the job isn't guaranteed to execute.
 
 ```cpp
-std::future<void> future;
+std::optional<std::future<void>> maybe_future;
 
 {
     zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> pool(1);
-    auto future = pool.push_job([](){ /* do nothing */ });
+    maybe_future = pool.push_job([](){ /* do nothing */ });
 }
 
-future.get(); //may throw a broken_promise exception
+if (maybe_future)
+    maybe_future->wait(); //may throw a broken_promise exception
 ```
 
-## Tracing
+# Tracing
 
-The threadpool supports specifying a custom tracing class that is a `friend` of the threadpool, which will contain static methods that the threadpool will call during its operation.
+The threadpool supports specifying a custom tracing class that is a `friend` of the threadpool, which will contain static methods that will be called during its operation.
 
 A default tracing class is provided which formats messages and calls a user-defined logging class. By default a `zx::Threadpool` object has tracing disabled, and will not affect performance.
 
@@ -144,7 +147,7 @@ int main()
 }
 ```
 
-prints
+will output
 
 ```cpp
 [INFO] threadpool: construction started. spawning 1 worker threads
@@ -155,3 +158,5 @@ prints
 [INFO] threadpool: 0 units of work were executed by others
 [INFO] threadpool: finished destruction
 ```
+
+The messages can be customised by providing your own tracing class instead of providing the tracing class `zx::ThreadpoolTracingLogger` with a logger class. You also aren't limited to logging, the internals of the threadpool could be be modified or inspected.
