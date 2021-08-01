@@ -1,3 +1,5 @@
+#pragma once
+
 //SELF
 
 //LIBS
@@ -6,7 +8,7 @@
 
 //STD
 
-void empty_task()
+static void empty_task()
 {
 }
 
@@ -37,8 +39,8 @@ static auto benchmark_empty_task_std_function_execute(benchmark::State& state) -
 
 static auto benchmark_threadpool_empty_task_push(benchmark::State& state) -> void
 {
-    Threadpool<ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
-    Threadpool producers(state.range(0));
+    zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
+    zx::Threadpool producers(state.range(0));
     auto produce = [&threadpool]() {
         threadpool.push_task(&empty_task);
     };
@@ -56,7 +58,7 @@ static auto benchmark_threadpool_empty_task_push(benchmark::State& state) -> voi
 
 static auto benchmark_threadpool_empty_task_execute(benchmark::State& state) -> void
 {
-    Threadpool threadpool(state.range(0));
+    zx::Threadpool threadpool(state.range(0));
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < empty_task_count; ++i)

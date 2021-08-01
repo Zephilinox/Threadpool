@@ -1,3 +1,5 @@
+#pragma once
+
 //SELF
 
 //LIBS
@@ -8,7 +10,7 @@
 
 constexpr auto sleepy_task_count = 1000;
 
-void sleepy_task()
+static void sleepy_task()
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
@@ -38,8 +40,8 @@ static auto benchmark_sleepy_task_std_function_execute(benchmark::State& state) 
 
 static auto benchmark_threadpool_sleepy_task_push(benchmark::State& state) -> void
 {
-    Threadpool<ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
-    Threadpool producers(state.range(0));
+    zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
+    zx::Threadpool producers(state.range(0));
     auto produce = [&threadpool]() {
         threadpool.push_task(&sleepy_task);
     };
@@ -57,7 +59,7 @@ static auto benchmark_threadpool_sleepy_task_push(benchmark::State& state) -> vo
 
 static auto benchmark_threadpool_sleepy_task_execute(benchmark::State& state) -> void
 {
-    Threadpool threadpool(state.range(0));
+    zx::Threadpool threadpool(state.range(0));
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < sleepy_task_count; ++i)

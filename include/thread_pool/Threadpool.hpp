@@ -10,6 +10,9 @@
 #include <string>
 #include <optional>
 
+namespace zx
+{
+
 enum class ThreadpoolPolicyPendingWork
 {
     // When the threadpool is destroyed, all pending work will be executed, and those futures will never have broken promises
@@ -29,15 +32,15 @@ enum class ThreadpoolPolicyNewWork
 
 namespace detail
 {
-    enum class WorkerType
-    {
-        // The worker type for all threads that the thread pool starts, to process pending work
-        wait_until_shutdown,
-        // The worker type that users can create to help process all pending work
-        wait_until_shutdown_or_no_pending_work,
-        // The worker type that users can create to help process a single unit of work
-        do_once_if_any_pending,
-    };
+enum class WorkerType
+{
+    // The worker type for all threads that the thread pool starts, to process pending work
+    wait_until_shutdown,
+    // The worker type that users can create to help process all pending work
+    wait_until_shutdown_or_no_pending_work,
+    // The worker type that users can create to help process a single unit of work
+    do_once_if_any_pending,
+};
 }
 
 template <typename Logger>
@@ -653,3 +656,5 @@ void Threadpool<A, B, C>::push_work(F&& func)
 
     m_change_in_pending_work.notify_one();
 }
+
+} // namespace zx

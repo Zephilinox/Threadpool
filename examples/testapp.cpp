@@ -42,9 +42,9 @@ public:
 };
 
 template <
-    ThreadpoolPolicyPendingWork pending_work_policy = ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
-    ThreadpoolPolicyNewWork new_work_policy = ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
-using ThreadpoolConsoleTracing = Threadpool<pending_work_policy, new_work_policy, ThreadpoolTracingLogger<ThreadpoolConsoleLogger>>;
+    zx::ThreadpoolPolicyPendingWork pending_work_policy = zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
+    zx::ThreadpoolPolicyNewWork new_work_policy = zx::ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
+using ThreadpoolConsoleTracing = zx::Threadpool<pending_work_policy, new_work_policy, zx::ThreadpoolTracingLogger<ThreadpoolConsoleLogger>>;
 
 int main()
 {
@@ -89,7 +89,7 @@ int main()
         auto start_time = std::chrono::high_resolution_clock::now();
 
         {
-            Threadpool<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(thread_count);
+            zx::Threadpool<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(thread_count);
         }
 
         const auto end_time = std::chrono::high_resolution_clock::now();
@@ -99,8 +99,8 @@ int main()
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
 
     {
-        ThreadpoolConsoleTracing<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> producer(1);
-        ThreadpoolConsoleTracing<ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(1);
+        ThreadpoolConsoleTracing<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> producer(1);
+        ThreadpoolConsoleTracing<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(1);
 
         for (int i = 0; i < task_count; ++i)
         {
