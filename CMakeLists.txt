@@ -4,12 +4,8 @@ project(threadpool)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if (NOT DEFINED THREADPOOL_IS_ROOT)
-    set(THREADPOOL_IS_ROOT OFF)
-    if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-        set(THREADPOOL_IS_ROOT ON)
-    endif()
-endif()
+include(CheckIsRoot)
+check_project_is_root(THREADPOOL_IS_ROOT)
 
 option(THREADPOOL_EXAMPLES "Build the threadpool examples" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_TESTS "Build the threadpool tests" ${THREADPOOL_IS_ROOT})
