@@ -4,19 +4,47 @@
 //STD
 #include <iostream>
 
-class ThreadpoolConsoleTracer
+class ThreadpoolConsoleLogger
 {
 public:
-    static void trace(const std::string& str)
+    enum class LogLevel
     {
-        std::cout << str << "\n";
+        none = 0,
+        critical = 1,
+        error = 2,
+        info = 3,
+        debug = 4,
+    };
+
+    static std::string log_level_to_string(LogLevel level)
+    {
+        switch (level)
+        {
+        case LogLevel::none:
+            return "[NONE]";
+        case LogLevel::critical:
+            return "[CRITICAL]";
+        case LogLevel::error:
+            return "[ERROR]";
+        case LogLevel::info:
+            return "[INFO]";
+        case LogLevel::debug:
+            return "[DEBUG]";
+        default:
+            return "[UNKNOWN]";
+        }
+    }
+
+    static void log(LogLevel level, const std::string& str)
+    {
+        std::cout << log_level_to_string(level) << " " << str << "\n";
     }
 };
 
 template <
     ThreadpoolPolicyPendingWork pending_work_policy = ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
     ThreadpoolPolicyNewWork new_work_policy = ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
-using ThreadpoolConsoleTracing = Threadpool<pending_work_policy, new_work_policy, ThreadpoolConsoleTracer>;
+using ThreadpoolConsoleTracing = Threadpool<pending_work_policy, new_work_policy, ThreadpoolTracingLogger<ThreadpoolConsoleLogger>>;
 
 int main()
 {
