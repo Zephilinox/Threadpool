@@ -24,7 +24,7 @@ enum class ThreadpoolPolicyNewWork
     // The user may toggle blocking new pending work before destruction
     configurable_and_forbidden_when_stopping,
     // New pending work can always be pushed, which may cause the threadpool destructor to block indefinitely
-    allow,
+    always_allowed,
 };
 
 namespace detail
@@ -186,7 +186,7 @@ public:
     // Set the threadpool to allow or refuse new work
     // If ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping
     //   If is_stopping_or_stopped() then this always returns false
-    // If ThreadpoolPolicyNewWork::allow
+    // If ThreadpoolPolicyNewWork::always_allowed
     //   This always returns true
     [[nodiscard]] bool is_allowing_new_work() const;
 
@@ -206,7 +206,7 @@ public:
     //   warning: if the job pushes more work to the threadpool then it may deadlock if the thread pool does not hold sufficient threads
     //	 warning: if the job is not executed then the future will throw a broken promise exception
     //
-    // If ThreadpoolPolicyNewWork::allow is used
+    // If ThreadpoolPolicyNewWork::always_allowed is used
     //   This returns std::future<...>.
     //   The job will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
     //
@@ -220,7 +220,7 @@ public:
     // A task will be queued and executed, and you can't specifically wait for it complete. fire-and-forget.
     //   warning: if the task pushes more work to the threadpool then it may deadlock if the thread pool does not hold sufficient threads
     //
-    // If ThreadpoolPolicyNewWork::allow is used
+    // If ThreadpoolPolicyNewWork::always_allowed is used
     //   This returns void
     //   The task will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
     //
@@ -466,7 +466,7 @@ auto Threadpool<A, new_work_policy, C>::push_job(F&& func, Args&&... args)
     {
         return push_job_new_work_forbid(std::forward<F>(func), std::forward<Args>(args)...);
     }
-    else if (new_work_policy == ThreadpoolPolicyNewWork::allow)
+    else if (new_work_policy == ThreadpoolPolicyNewWork::always_allowed)
     {
         return push_job_new_work_allow(std::forward<F>(func), std::forward<Args>(args)...);
     }
@@ -509,7 +509,7 @@ auto Threadpool<A, new_work_policy, C>::push_task(F&& func, Args&&... args)
     {
         return push_task_new_work_forbid(std::forward<F>(func), std::forward<Args>(args)...);
     }
-    else if constexpr (new_work_policy == ThreadpoolPolicyNewWork::allow)
+    else if constexpr (new_work_policy == ThreadpoolPolicyNewWork::always_allowed)
     {
         return push_task_new_work_allow(std::forward<F>(func), std::forward<Args>(args)...);
     }
