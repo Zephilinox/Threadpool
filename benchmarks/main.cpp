@@ -1,5 +1,6 @@
 //SELF
 #include "empty_task.hpp"
+#include "asio_bench.hpp"
 #include "heavy_task.hpp"
 #include "sleepy_task.hpp"
 

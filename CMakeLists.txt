@@ -25,7 +25,7 @@ if (THREADPOOL_DOWNLOAD_CPM)
 endif()
 
 add_library(threadpool INTERFACE "include/thread_pool/Threadpool.hpp")
-target_include_directories(threadpool INTERFACE "include"
+target_include_directories(threadpool INTERFACE
     $<BUILD_INTERFACE:${threadpool_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
