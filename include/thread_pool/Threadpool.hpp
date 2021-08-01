@@ -141,7 +141,7 @@ using ThreadpoolTracingNull = ThreadpoolTracingLogger<void>;
 template <
     ThreadpoolPolicyPendingWork pending_work_policy = ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
     ThreadpoolPolicyNewWork new_work_policy = ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping,
-    typename Tracer = ThreadpoolTracingNull>
+    typename Tracer = void>
 class Threadpool final
 {
 public:
