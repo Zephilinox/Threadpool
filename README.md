@@ -80,7 +80,7 @@ Changing the policy to `zx::ThreadpoolPolicyPendingWork::leave_work_unfinished` 
 Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc), as the job isn't guaranteed to execute.
 
 ```cpp
-std::future<void> future
+std::future<void> future;
 
 {
     zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> pool(1);
