@@ -1,5 +1,5 @@
-//SELF
-#include "Threadpool.hpp"
+//LIBS
+#include <thread_pool/Threadpool.hpp>
 
 //STD
 #include <iostream>
@@ -33,7 +33,7 @@ int main()
 	
 	constexpr auto sleep_ms = 0;
 
-	auto lambda = [task_iterations](int something) -> int
+	auto lambda = [&](int something) -> int
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds{sleep_ms});
 		//++result;
