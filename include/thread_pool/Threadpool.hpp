@@ -608,14 +608,25 @@ template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
 template <typename F, typename... Args>
 auto Threadpool<A, B, C>::make_task(F&& func, Args&&... args)
 {
-    auto task = [func = std::forward<F>(func), tuple_args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-        return std::apply([func = std::forward<F>(func)](auto&&... tuple_args) mutable {
-            return std::forward<F>(func)(tuple_args...);
-        },
-                          std::move(tuple_args));
-    };
+    if constexpr (sizeof...(args) == 0)
+    {
+        auto task = [func = std::forward<F>(func)]() mutable {
+            return std::forward<F>(func)();
+        };
 
-    return task;
+        return task;
+    }
+    else
+    {
+        auto task = [func = std::forward<F>(func), tuple_args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
+            return std::apply([func = std::forward<F>(func)](auto&&... tuple_args) mutable {
+                return std::forward<F>(func)(tuple_args...);
+            },
+                              std::move(tuple_args));
+        };
+
+        return task;
+    }
 }
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
