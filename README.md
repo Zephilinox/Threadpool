@@ -8,7 +8,7 @@ C++17 is required
 
 # Basic Usage
 
-```
+```cpp
 #include <thread_pool/Threadpool.hpp>
 #include <iostream>
 
@@ -33,7 +33,7 @@ The default number of threads is `std::max(std::min(std::thread::hardware_concur
 A Job is a unit of work that can be tracked via `std::future`.
 You can block waiting for the future to become ready, regardless of if the job returns a value or void.
 
-```
+```cpp
 zx::Threadpool pool(1);
 auto maybe_future = pool.push_job([](){ /* do nothing */ });
 if (maybe_future)
@@ -47,7 +47,7 @@ By design, there's no way to wait for that specific task to complete.
 
 You could instead wait for all work to complete. Note that if other threads are adding work while you wait, or there is previous work being completed, you will need to wait for all of that work to also complete.
 
-```
+```cpp
 zx::Threadpool pool(1);
 pool.push_task([](){ /* do nothing */ });
 pool.wait_all();
@@ -63,7 +63,7 @@ Note that this default policy requires `push_job` to return an optional future, 
 
 Changing the policy to `zx::ThreadpoolPolicyNewWork::always_allow` will cause `push_job` to return an ordinary `std::future`, and `push_task` to return nothing.
 
-```
+```cpp
 zx::Threadpool<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish, zx::ThreadpoolPolicyNewWork::always_allow> pool(1);
 auto future = pool.push_job([](){ /* do nothing */ });
 future.get(); //block waiting for job to complete
@@ -79,7 +79,7 @@ Changing the policy to `zx::ThreadpoolPolicyPendingWork::leave_work_unfinished` 
 
 Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc), as the job isn't guaranteed to execute.
 
-```
+```cpp
 std::future<void> future
 
 {
@@ -98,7 +98,7 @@ A default tracing class is provided which formats messages and calls a user-defi
 
 Note that the tracing functions will be called from different threads, and therefore thread safety must be maintained.
 
-```
+```cpp
 class MyConsoleLogger
 {
 public:
@@ -146,7 +146,7 @@ int main()
 
 prints
 
-```
+```cpp
 [INFO] threadpool: construction started. spawning 1 worker threads
 [INFO] threadpool: construction finished. worker threads spawned
 [INFO] threadpool: started destruction. is_stopping = true
