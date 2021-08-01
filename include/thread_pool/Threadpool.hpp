@@ -538,7 +538,7 @@ void Threadpool<A, B, C>::push_work(F&& func)
         {
             std::invoke(std::move(work)); // Tasks
         }
-        if constexpr (std::is_invocable<decltype(*work)>())
+        else if constexpr (std::is_invocable<decltype(*work)>())
         {
             std::invoke(*work); // Jobs
         }
