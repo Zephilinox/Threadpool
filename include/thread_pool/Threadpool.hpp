@@ -198,10 +198,25 @@ public:
     [[nodiscard]] bool is_stopped() const;
 
     // Get the total number of work items executed by the specified thread index
-    [[nodiscard]] unsigned int work_executed(unsigned int thread_index);
+    [[nodiscard]] unsigned int work_executed(unsigned int thread_index) const;
 
     // Get the total number of work items executed not by the threadpool, e.g. via process_all_pending()
-    [[nodiscard]] unsigned int work_executed_by_others();
+    [[nodiscard]] unsigned int work_executed_by_others() const;
+
+    // Get the total number of work items executed
+    [[nodiscard]] unsigned int work_executed_total() const;
+
+    // Get the number of pending units of work
+    [[nodiscard]] unsigned int work_pending() const;
+
+    // Get the number of executing units of work
+    [[nodiscard]] unsigned int work_executing() const;
+
+    // Get the total number of units of work
+    [[nodiscard]] unsigned int work_total() const;
+
+    // Get the number of worker threads
+    [[nodiscard]] unsigned int thread_count() const;
 
     // A job will be queued and executed, and you can specifically wait on the future for it to complete.
     //   warning: if the job pushes more work to the threadpool then it may deadlock if the thread pool does not hold sufficient threads
@@ -264,8 +279,9 @@ private:
 
     std::vector<std::thread> m_threads;
     std::vector<std::atomic<unsigned int>> m_total_work_executed;
-    std::atomic<bool> m_shutting_down = false;
     std::atomic<bool> m_allow_new_work = true;
+    //todo: should probably be an enum
+    std::atomic<bool> m_shutting_down = false;
     std::atomic<bool> m_is_stopping = false;
     std::atomic<bool> m_is_stopped = false;
     std::atomic<unsigned int> m_pending_work_to_process = 0;
@@ -447,15 +463,50 @@ bool Threadpool<A, B, C>::is_stopped() const
 }
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executed(unsigned int thread_index)
+unsigned int Threadpool<A, B, C>::work_executed(unsigned int thread_index) const
 {
     return m_total_work_executed[thread_index];
 }
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executed_by_others()
+unsigned int Threadpool<A, B, C>::work_executed_by_others() const
 {
     return m_total_work_executed[m_threads.size()];
+}
+
+template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+unsigned int Threadpool<A, B, C>::work_executed_total() const
+{
+    unsigned int total = 0;
+    for (auto& thread_total : m_total_work_executed)
+        total += thread_total;
+
+    return total;
+}
+
+template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+unsigned int Threadpool<A, B, C>::work_pending() const
+{
+    return m_pending_work_to_process;
+}
+
+template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+unsigned int Threadpool<A, B, C>::work_executing() const
+{
+    return m_work_executing;
+}
+
+template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+unsigned int Threadpool<A, B, C>::work_total() const
+{
+    // If pending work moves to executing between atomic loads the work total may appear higher than it really is, but that's preferable to lower
+    return m_pending_work_to_process + m_work_executing;
+}
+
+template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+unsigned int Threadpool<A, B, C>::thread_count() const
+{
+    return m_threads.size();
 }
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork new_work_policy, typename C>
