@@ -541,10 +541,14 @@ template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
 template <typename F, typename... Args>
 auto Threadpool<A, B, C>::push_job_new_work_forbid(F&& func, Args&&... args) -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
 {
-    if (!m_allow_new_work)
-        return std::nullopt;
-
     ++m_work_almost_pushed;
+
+    if (!m_allow_new_work)
+    {
+        --m_work_almost_pushed;
+        return std::nullopt;
+    }
+
     auto job = make_job(std::forward<F>(func), std::forward<Args>(args)...);
     auto future = job->get_future();
     push_work(std::move(job));
