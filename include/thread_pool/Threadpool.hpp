@@ -475,6 +475,8 @@ unsigned int Threadpool<A, B, C>::work_executed_by_others() const
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
 unsigned int Threadpool<A, B, C>::work_executed_total() const
 {
+    // represents at minimum the total work executed at the time of function call
+    // unlikely to represent total work executed at time of function call ending
     unsigned int total = 0;
     for (auto& thread_total : m_total_work_executed)
         total += thread_total;
@@ -603,8 +605,10 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
 
             if constexpr (type == WorkerType::wait_until_shutdown)
             {
+                // If we're shutting down or there's work to process, then stop waiting
+                // The predicate is checked before we wait, so if we have shut down between now and executing the last job
+                //   we'll exit okay rather than deadlock
                 m_change_in_pending_work.wait(work_lock, [this]() {
-                    // If we're shutting down or there's work to process, then stop waiting
                     return m_shutting_down || !m_pending_work.empty();
                 });
             }
@@ -612,7 +616,7 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
                                || type == WorkerType::do_once_if_any_pending)
             {
                 // It's important to grab the lock before this
-                // so that new work doesn't come in after checking but before we return
+                //   so that new work doesn't come in after checking but before we return
                 if (m_pending_work.empty())
                     return;
             }
