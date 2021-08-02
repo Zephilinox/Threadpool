@@ -438,10 +438,8 @@ template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
 template <typename>
 void Threadpool<A, B, C>::allow_new_work(bool value)
 {
-    if (m_is_stopping)
-        return;
-
-    m_allow_new_work = value;
+    // ensure that we check m_is_stopping last to prevent a race that could allow new work to be pushed
+    m_allow_new_work = value && m_is_stopping;
 }
 
 template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
