@@ -11,15 +11,13 @@
 
 constexpr auto heavy_task_count = 100;
 
-static volatile float heavy_task_result = 0;
-
 static void heavy_task()
 {
     std::vector<float> vec(32);
     for (int i = 0; i < 32; ++i)
         vec[i] = (static_cast<float>(std::rand() % 100000) / 100000.0f);
 
-    heavy_task_result += std::accumulate(vec.begin(), vec.end(), 0.0f);
+    volatile auto heavy_task_result = std::accumulate(vec.begin(), vec.end(), 0.0f);
 }
 
 static auto benchmark_heavy_task_execute(benchmark::State& state) -> void
