@@ -599,34 +599,35 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
 
         while (true)
         {
+            work_lock.lock();
+
             if constexpr (type == WorkerType::wait_until_shutdown)
             {
-                work_lock.lock();
                 m_change_in_pending_work.wait(work_lock, [this]() {
                     // If we're shutting down or there's work to process, then stop waiting
-                    return m_shutting_down || m_pending_work_to_process;
+                    return m_shutting_down || !m_pending_work.empty();
                 });
-
-                if (m_shutting_down)
-                    return;
             }
             else if constexpr (type == WorkerType::wait_until_shutdown_or_no_pending_work
                                || type == WorkerType::do_once_if_any_pending)
             {
-                if (m_shutting_down || !m_pending_work_to_process)
+                // It's important to grab the lock before this
+                // so that new work doesn't come in after checking but before we return
+                if (m_pending_work.empty())
                     return;
-
-                // The condition variable will have locked it for the other worker, but these need to lock it explicitly
-                work_lock.lock();
             }
             else
             {
                 static_assert(type == WorkerType::wait_until_shutdown, "internal error: unknown worker type");
             }
 
+            if (m_shutting_down)
+                return;
+
             auto job = std::move(m_pending_work.front());
             m_pending_work.pop();
             --m_pending_work_to_process;
+            // lock after modifying m_pending_work_to_process to keep it in sync with the real queue
             work_lock.unlock();
 
             ++m_work_executing;
