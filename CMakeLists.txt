@@ -14,6 +14,10 @@ option(THREADPOOL_INSTALL "Enable cmake install for the threadpool" ${THREADPOOL
 option(THREADPOOL_DOWNLOAD_CPM "Download CPM. Disable if you're providing your own version of CPM" ON)
 option(THREADPOOL_CLANG_FORMAT_CHECK "Adds the threadpool_clang_format_check target" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_CLANG_FORMAT_FIX "Adds the threadpool_clang_format_fix target" ${THREADPOOL_IS_ROOT})
+option(THREADPOOL_ASAN "Build with ASAN" OFF)
+option(THREADPOOL_LSAN "Build with LSAN" OFF)
+option(THREADPOOL_TSAN "Build with TSAN" OFF)
+option(THREADPOOL_UBSAN "Build with UBSAN" OFF)
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Exports compile commands (if available)" ${THREADPOOL_IS_ROOT})
 
 if (THREADPOOL_IS_ROOT)
@@ -22,6 +26,22 @@ endif()
 
 if (THREADPOOL_DOWNLOAD_CPM)
     include(DownloadCPM)
+endif()
+
+if (THREADPOOL_ASAN)
+    include(SanitizeAddress)
+endif()
+
+if (THREADPOOL_LSAN)
+    include(SanitizeLeaks)
+endif()
+
+if (THREADPOOL_TSAN)
+    include(SanitizeThreads)
+endif()
+
+if (THREADPOOL_UBSAN)
+    include(SanitizeUndefinedBehaviour)
 endif()
 
 add_library(threadpool INTERFACE "include/thread_pool/Threadpool.hpp")
