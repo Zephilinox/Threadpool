@@ -9,6 +9,7 @@
 #include <chrono>
 #include <string>
 #include <optional>
+#include <type_traits>
 
 namespace zx
 {
