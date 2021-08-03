@@ -44,7 +44,7 @@ if (THREADPOOL_UBSAN)
     include(SanitizeUndefinedBehaviour)
 endif()
 
-add_library(threadpool INTERFACE "include/thread_pool/Threadpool.hpp")
+add_library(threadpool INTERFACE "include/threadpool/threadpool.hpp")
 target_include_directories(threadpool INTERFACE
     $<BUILD_INTERFACE:${threadpool_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>

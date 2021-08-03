@@ -4,7 +4,7 @@
 
 //LIBS
 #include <benchmark/benchmark.h>
-#include <thread_pool/Threadpool.hpp>
+#include <threadpool/threadpool.hpp>
 
 //STD
 #include <numeric>
@@ -45,8 +45,8 @@ static auto benchmark_heavy_task_std_function_execute(benchmark::State& state) -
 
 static auto benchmark_threadpool_heavy_task_push(benchmark::State& state) -> void
 {
-    zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> threadpool(0);
-    zx::Threadpool producers(state.range(0));
+    zx::threadpool<zx::threadpool_policy_pending_work::leave_work_unfinished> threadpool(0);
+    zx::threadpool producers(state.range(0));
     auto produce = [&threadpool]() {
         threadpool.push_task(&heavy_task);
     };
@@ -64,7 +64,7 @@ static auto benchmark_threadpool_heavy_task_push(benchmark::State& state) -> voi
 
 static auto benchmark_threadpool_heavy_task_execute(benchmark::State& state) -> void
 {
-    zx::Threadpool threadpool(state.range(0));
+    zx::threadpool threadpool(state.range(0));
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < heavy_task_count; ++i)

@@ -9,12 +9,12 @@ C++17 is required
 # Basic Usage
 
 ```cpp
-#include <thread_pool/Threadpool.hpp>
+#include <threadpool/threadpool.hpp>
 #include <iostream>
 
 int main()
 {
-    zx::Threadpool pool(2);
+    zx::threadpool pool(2);
 
     pool.push_task([](){
         std::cout << "Hello, ";
@@ -36,7 +36,7 @@ A Job is a unit of work that can be tracked via `std::future`.
 You can block waiting for the future to become ready, regardless of if the job returns a value or void.
 
 ```cpp
-zx::Threadpool pool(1);
+zx::threadpool pool(1);
 auto maybe_future = pool.push_job([](){ /* do nothing */ });
 if (maybe_future)
     maybe_future->wait(); //block waiting for job to complete
@@ -50,7 +50,7 @@ By design, there's no way to wait for that specific task to complete.
 You could instead wait for all work to complete. Note that if other threads are adding work while you wait, or there is previous work being completed, you will need to wait for all of that work to also complete.
 
 ```cpp
-zx::Threadpool pool(1);
+zx::threadpool pool(1);
 pool.push_task([](){ /* do nothing */ });
 pool.wait_all();
 ```
@@ -59,25 +59,25 @@ pool.wait_all();
 
 ### New Work
 
-The `zx::ThreadpoolPolicyNewWork` policy determines whether pushing new work to the threadpool can fail. By default this is `configurable_and_forbidden_when_stopping` which allows users to toggle when the threadpool is accepting new work, as well as forbid new work from being pushed while the threadpool is stopping.
+The `zx::threadpool_policy_new_work` policy determines whether pushing new work to the threadpool can fail. By default this is `configurable_and_forbidden_when_stopping` which allows users to toggle when the threadpool is accepting new work, as well as forbid new work from being pushed while the threadpool is stopping.
 
 Note that this default policy requires `push_job` to return an optional future, and for `push_task` to return a boolean.
 
-Changing the policy to `zx::ThreadpoolPolicyNewWork::always_allow` will cause `push_job` to return an ordinary `std::future`, and `push_task` to return nothing.
+Changing the policy to `zx::threadpool_policy_new_work::always_allow` will cause `push_job` to return an ordinary `std::future`, and `push_task` to return nothing.
 
 ```cpp
-zx::Threadpool<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish, zx::ThreadpoolPolicyNewWork::always_allow> pool(1);
+zx::threadpool<zx::threadpool_policy_pending_work::wait_for_work_to_finish, zx::threadpool_policy_new_work::always_allow> pool(1);
 auto future = pool.push_job([](){ /* do nothing */ });
 future.wait(); //block waiting for job to complete
 ```
 
 ### Pending Work
 
-The `zx::ThreadpoolPolicyPendingWork` policy determines whether work in the queue when the threadpool is stopping should be ignored, or completed. By default this is `wait_for_work_to_finish` which will cause the destructor to block until all jobs have completed.
+The `zx::threadpool_policy_pending_work` policy determines whether work in the queue when the threadpool is stopping should be ignored, or completed. By default this is `wait_for_work_to_finish` which will cause the destructor to block until all jobs have completed.
 
 Note that if the `New Work` policy is used to `always_allow` that work can be added while the destructor blocks, which could cause the destructor to never complete.
 
-Changing the policy to `zx::ThreadpoolPolicyPendingWork::leave_work_unfinished` will cause any pending work to be ignored when stopping, therefore work that was pushed will never execute.
+Changing the policy to `zx::threadpool_policy_pending_work::leave_work_unfinished` will cause any pending work to be ignored when stopping, therefore work that was pushed will never execute.
 
 Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc), as the job isn't guaranteed to execute.
 
@@ -85,7 +85,7 @@ Note that when `leave_work_unfinished` is used the `std::future` returned from `
 std::optional<std::future<void>> maybe_future;
 
 {
-    zx::Threadpool<zx::ThreadpoolPolicyPendingWork::leave_work_unfinished> pool(1);
+    zx::threadpool<zx::threadpool_policy_pending_work::leave_work_unfinished> pool(1);
     maybe_future = pool.push_job([](){ /* do nothing */ });
 }
 
@@ -136,9 +136,9 @@ public:
 };
 
 template <
-    zx::ThreadpoolPolicyPendingWork A = zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
-    zx::ThreadpoolPolicyNewWork B = zx::ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
-using ThreadpoolConsoleTracing = zx::Threadpool<A, B, zx::ThreadpoolTracingLogger<MyConsoleLogger>>;
+    zx::threadpool_policy_pending_work A = zx::threadpool_policy_pending_work::wait_for_work_to_finish,
+    zx::threadpool_policy_new_work B = zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping>
+using ThreadpoolConsoleTracing = zx::threadpool<A, B, zx::threadpool_tracing_logger<MyConsoleLogger>>;
 
 
 int main()
@@ -159,4 +159,4 @@ will output
 [INFO] threadpool: finished destruction
 ```
 
-The messages can be customised by providing your own tracing class instead of providing the tracing class `zx::ThreadpoolTracingLogger` with a logger class. You also aren't limited to logging, the internals of the threadpool could be be modified or inspected.
+The messages can be customised by providing your own tracing class instead of providing the tracing class `zx::threadpool_tracing_logger` with a logger class. You also aren't limited to logging, the internals of the threadpool could be be modified or inspected.

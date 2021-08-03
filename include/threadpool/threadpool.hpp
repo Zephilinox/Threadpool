@@ -14,7 +14,7 @@
 namespace zx
 {
 
-enum class ThreadpoolPolicyPendingWork
+enum class threadpool_policy_pending_work
 {
     // When the threadpool is destroyed, all pending work will be executed, and those futures will never have broken promises
     wait_for_work_to_finish,
@@ -22,7 +22,7 @@ enum class ThreadpoolPolicyPendingWork
     leave_work_unfinished,
 };
 
-enum class ThreadpoolPolicyNewWork
+enum class threadpool_policy_new_work
 {
     // When the threadpool is destroyed, no new pending work can be pushed
     // The user may toggle blocking new pending work before destruction
@@ -33,7 +33,7 @@ enum class ThreadpoolPolicyNewWork
 
 namespace detail
 {
-enum class WorkerType
+enum class worker_type
 {
     // The worker type for all threads that the thread pool starts, to process pending work
     wait_until_shutdown,
@@ -45,7 +45,7 @@ enum class WorkerType
 }
 
 template <typename Logger>
-class ThreadpoolTracingLogger
+class threadpool_tracing_logger
 {
 public:
     static constexpr bool has_logger_v = !std::is_same_v<Logger, void>;
@@ -137,29 +137,29 @@ public:
     }
 };
 
-using ThreadpoolTracingNull = ThreadpoolTracingLogger<void>;
+using threadpool_tracing_null = threadpool_tracing_logger<void>;
 
 template <
-    ThreadpoolPolicyPendingWork pending_work_policy = ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
-    ThreadpoolPolicyNewWork new_work_policy = ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping,
+    threadpool_policy_pending_work pending_work_policy = threadpool_policy_pending_work::wait_for_work_to_finish,
+    threadpool_policy_new_work new_work_policy = threadpool_policy_new_work::configurable_and_forbidden_when_stopping,
     typename Tracer = void>
-class Threadpool final
+class threadpool final
 {
 public:
     static constexpr auto policy_pending_work_v = pending_work_policy;
     static constexpr auto policy_new_work_v = new_work_policy;
     static constexpr bool has_tracing_v = !std::is_same_v<Tracer, void>;
     using tracer_t = Tracer;
-    using WorkerType = detail::WorkerType;
+    using worker_type = detail::worker_type;
 
-    explicit Threadpool(unsigned int thread_count = std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U));
+    explicit threadpool(unsigned int thread_count = std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U));
 
-    Threadpool(const Threadpool& other) = delete;
-    Threadpool(Threadpool&& other) = delete;
-    Threadpool& operator=(const Threadpool& other) = delete;
-    Threadpool& operator=(Threadpool&& other) = delete;
+    threadpool(const threadpool& other) = delete;
+    threadpool(threadpool&& other) = delete;
+    threadpool& operator=(const threadpool& other) = delete;
+    threadpool& operator=(threadpool&& other) = delete;
 
-    ~Threadpool() noexcept;
+    ~threadpool() noexcept;
 
     // Help process all pending work by executing it from the calling thread, including any new work
     // Will block while there is pending work to process
@@ -182,13 +182,13 @@ public:
     // Set the threadpool to allow or refuse new work
     // Only exists when ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping is used
     //   if is_stopping_or_stopped() then new work will be refused regardless
-    template <typename = std::enable_if_t<new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>>
+    template <typename = std::enable_if_t<new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping>>
     void allow_new_work(bool value);
 
     // Set the threadpool to allow or refuse new work
-    // If ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping
+    // If threadpool_policy_new_work::configurable_and_forbidden_when_stopping
     //   If is_stopping_or_stopped() then this always returns false
-    // If ThreadpoolPolicyNewWork::always_allowed
+    // If threadpool_policy_new_work::always_allowed
     //   This always returns true
     [[nodiscard]] bool is_allowing_new_work() const;
 
@@ -223,13 +223,13 @@ public:
     //   warning: if the job pushes more work to the threadpool then it may deadlock if the thread pool does not hold sufficient threads
     //	 warning: if the job is not executed then the future will throw a broken promise exception
     //
-    // If ThreadpoolPolicyNewWork::always_allowed is used
+    // If threadpool_policy_new_work::always_allowed is used
     //   This returns std::future<...>.
-    //   The job will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
+    //   The job will always be executed (unless threadpool_policy_pending_work::leave_work_unfinished is used)
     //
-    // If ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping is used
+    // If threadpool_policy_new_work::configurable_and_forbidden_when_stopping is used
     //   This returns std::optional<std::future<...>> which will always hold a future when allowing_new_work()
-    //   If a future is returned the job will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
+    //   If a future is returned the job will always be executed (unless threadpool_policy_pending_work::leave_work_unfinished is used)
     //   If an empty optional is returned the job will never be executed
     template <typename F, typename... Args>
     auto push_job(F&& func, Args&&... args);
@@ -237,19 +237,19 @@ public:
     // A task will be queued and executed, and you can't specifically wait for it complete. fire-and-forget.
     //   warning: if the task pushes more work to the threadpool then it may deadlock if the thread pool does not hold sufficient threads
     //
-    // If ThreadpoolPolicyNewWork::always_allowed is used
+    // If threadpool_policy_new_work::always_allowed is used
     //   This returns void
-    //   The task will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
+    //   The task will always be executed (unless threadpool_policy_pending_work::leave_work_unfinished is used)
     //
-    // If ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping is used
+    // If threadpool_policy_new_work::configurable_and_forbidden_when_stopping is used
     //   This returns bool, indicating whether the task was added to the pending work queue
-    //   If it was added the task will always be executed (unless ThreadpoolPolicyPendingWork::leave_work_unfinished is used)
+    //   If it was added the task will always be executed (unless threadpool_policy_pending_work::leave_work_unfinished is used)
     //   If it was not added the task will never be executed
     template <typename F, typename... Args>
     auto push_task(F&& func, Args&&... args);
 
 private:
-    template <WorkerType type>
+    template <worker_type type>
     auto make_worker(unsigned int thread_id);
 
     template <typename F, typename... Args>
@@ -292,8 +292,8 @@ private:
     friend Tracer;
 };
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename Tracer>
-Threadpool<A, B, Tracer>::Threadpool(unsigned int thread_count)
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename Tracer>
+threadpool<A, B, Tracer>::threadpool(unsigned int thread_count)
     : m_total_work_executed(thread_count + 1U)
 {
     if constexpr (has_tracing_v)
@@ -301,7 +301,7 @@ Threadpool<A, B, Tracer>::Threadpool(unsigned int thread_count)
 
     for (unsigned int i = 0; i < thread_count; ++i)
     {
-        m_threads.emplace_back(make_worker<WorkerType::wait_until_shutdown>(i));
+        m_threads.emplace_back(make_worker<worker_type::wait_until_shutdown>(i));
     }
 
     if constexpr (has_tracing_v)
@@ -309,17 +309,17 @@ Threadpool<A, B, Tracer>::Threadpool(unsigned int thread_count)
 }
 
 template <
-    ThreadpoolPolicyPendingWork pending_work_policy,
-    ThreadpoolPolicyNewWork new_work_policy,
+    threadpool_policy_pending_work pending_work_policy,
+    threadpool_policy_new_work new_work_policy,
     typename Tracer>
-Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
+threadpool<pending_work_policy, new_work_policy, Tracer>::~threadpool() noexcept
 {
     m_is_stopping = true;
 
     if constexpr (has_tracing_v)
         Tracer::on_destructor_start(*this);
 
-    if constexpr (new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping)
+    if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
         m_allow_new_work = false;
 
@@ -333,7 +333,7 @@ Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
         }
     }
 
-    if constexpr (pending_work_policy == ThreadpoolPolicyPendingWork::wait_for_work_to_finish)
+    if constexpr (pending_work_policy == threadpool_policy_pending_work::wait_for_work_to_finish)
     {
         while (m_pending_work_to_process)
         {
@@ -343,7 +343,7 @@ Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
-    else if constexpr (pending_work_policy == ThreadpoolPolicyPendingWork::leave_work_unfinished)
+    else if constexpr (pending_work_policy == threadpool_policy_pending_work::leave_work_unfinished)
     {
         if constexpr (has_tracing_v)
             Tracer::on_leave_pending_work_unfinished(*this);
@@ -355,7 +355,7 @@ Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
     }
     else
     {
-        static_assert(pending_work_policy == ThreadpoolPolicyPendingWork::wait_for_work_to_finish, "Internal error: unknown pending work policy");
+        static_assert(pending_work_policy == threadpool_policy_pending_work::wait_for_work_to_finish, "Internal error: unknown pending work policy");
     }
 
     m_shutting_down = true;
@@ -395,26 +395,26 @@ Threadpool<pending_work_policy, new_work_policy, Tracer>::~Threadpool() noexcept
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-void Threadpool<A, B, C>::process_all_pending()
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+void threadpool<A, B, C>::process_all_pending()
 {
     if (!m_pending_work_to_process)
         return;
 
-    make_worker<WorkerType::wait_until_shutdown_or_no_pending_work>(m_threads.size())();
+    make_worker<worker_type::wait_until_shutdown_or_no_pending_work>(m_threads.size())();
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-void Threadpool<A, B, C>::process_once()
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+void threadpool<A, B, C>::process_once()
 {
     if (!m_pending_work_to_process)
         return;
 
-    make_worker<WorkerType::do_once_if_any_pending>(m_threads.size())();
+    make_worker<worker_type::do_once_if_any_pending>(m_threads.size())();
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-void Threadpool<A, B, C>::wait_all_pending() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+void threadpool<A, B, C>::wait_all_pending() const
 {
     while (m_pending_work_to_process)
     {
@@ -422,8 +422,8 @@ void Threadpool<A, B, C>::wait_all_pending() const
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-void Threadpool<A, B, C>::wait_all() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+void threadpool<A, B, C>::wait_all() const
 {
     // it's possible that m_pending_work_to_process increases after being read and before we check m_work_executing
     //   however, we only really need to wait for the existing work at the time of calling the function
@@ -435,46 +435,46 @@ void Threadpool<A, B, C>::wait_all() const
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename>
-void Threadpool<A, B, C>::allow_new_work(bool value)
+void threadpool<A, B, C>::allow_new_work(bool value)
 {
     // ensure that we check m_is_stopping last to prevent a race that could allow new work to be pushed
     m_allow_new_work = value && m_is_stopping;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-bool Threadpool<A, B, C>::is_allowing_new_work() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+bool threadpool<A, B, C>::is_allowing_new_work() const
 {
     return m_allow_new_work && !m_is_stopping;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-bool Threadpool<A, B, C>::is_stopping_or_stopped() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+bool threadpool<A, B, C>::is_stopping_or_stopped() const
 {
     return m_is_stopping;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-bool Threadpool<A, B, C>::is_stopped() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+bool threadpool<A, B, C>::is_stopped() const
 {
     return m_is_stopped;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executed(unsigned int thread_index) const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_executed(unsigned int thread_index) const
 {
     return m_total_work_executed[thread_index];
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executed_by_others() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_executed_by_others() const
 {
     return m_total_work_executed[m_threads.size()];
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executed_total() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_executed_total() const
 {
     // represents at minimum the total work executed at the time of function call
     // unlikely to represent total work executed at time of function call ending
@@ -485,52 +485,52 @@ unsigned int Threadpool<A, B, C>::work_executed_total() const
     return total;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_pending() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_pending() const
 {
     return m_pending_work_to_process;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_executing() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_executing() const
 {
     return m_work_executing;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::work_total() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::work_total() const
 {
     // If pending work moves to executing between atomic loads the work total may appear higher than it really is, but that's preferable to lower
     return m_pending_work_to_process + m_work_executing;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-unsigned int Threadpool<A, B, C>::thread_count() const
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+unsigned int threadpool<A, B, C>::thread_count() const
 {
     return m_threads.size();
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork new_work_policy, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_policy, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, new_work_policy, C>::push_job(F&& func, Args&&... args)
+auto threadpool<A, new_work_policy, C>::push_job(F&& func, Args&&... args)
 {
-    if constexpr (new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping)
+    if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
         return push_job_new_work_forbid(std::forward<F>(func), std::forward<Args>(args)...);
     }
-    else if (new_work_policy == ThreadpoolPolicyNewWork::always_allowed)
+    else if (new_work_policy == threadpool_policy_new_work::always_allowed)
     {
         return push_job_new_work_allow(std::forward<F>(func), std::forward<Args>(args)...);
     }
     else
     {
-        static_assert(new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping, "internal error: unknown new work policy");
+        static_assert(new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping, "internal error: unknown new work policy");
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, B, C>::push_job_new_work_allow(F&& func, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>>
+auto threadpool<A, B, C>::push_job_new_work_allow(F&& func, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>>
 {
     auto job = make_job(std::forward<F>(func), std::forward<Args>(args)...);
     auto future = job->get_future();
@@ -538,9 +538,9 @@ auto Threadpool<A, B, C>::push_job_new_work_allow(F&& func, Args&&... args) -> s
     return future;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, B, C>::push_job_new_work_forbid(F&& func, Args&&... args) -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
+auto threadpool<A, B, C>::push_job_new_work_forbid(F&& func, Args&&... args) -> std::optional<std::future<std::invoke_result_t<F, Args...>>>
 {
     ++m_work_almost_pushed;
 
@@ -557,35 +557,35 @@ auto Threadpool<A, B, C>::push_job_new_work_forbid(F&& func, Args&&... args) -> 
     return future;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork new_work_policy, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_policy, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, new_work_policy, C>::push_task(F&& func, Args&&... args)
+auto threadpool<A, new_work_policy, C>::push_task(F&& func, Args&&... args)
 {
-    if constexpr (new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping)
+    if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
         return push_task_new_work_forbid(std::forward<F>(func), std::forward<Args>(args)...);
     }
-    else if constexpr (new_work_policy == ThreadpoolPolicyNewWork::always_allowed)
+    else if constexpr (new_work_policy == threadpool_policy_new_work::always_allowed)
     {
         return push_task_new_work_allow(std::forward<F>(func), std::forward<Args>(args)...);
     }
     else
     {
-        static_assert(new_work_policy == ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping, "internal error: unknown new work policy");
+        static_assert(new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping, "internal error: unknown new work policy");
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork new_work_policy, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_policy, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, new_work_policy, C>::push_task_new_work_allow(F&& func, Args&&... args) -> void
+auto threadpool<A, new_work_policy, C>::push_task_new_work_allow(F&& func, Args&&... args) -> void
 {
     auto task = make_task(std::forward<F>(func), std::forward<Args>(args)...);
     push_work(std::move(task));
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork new_work_policy, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_policy, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, new_work_policy, C>::push_task_new_work_forbid(F&& func, Args&&... args) -> bool
+auto threadpool<A, new_work_policy, C>::push_task_new_work_forbid(F&& func, Args&&... args) -> bool
 {
     if (!m_allow_new_work)
         return false;
@@ -597,9 +597,9 @@ auto Threadpool<A, new_work_policy, C>::push_task_new_work_forbid(F&& func, Args
     return true;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
-template <detail::WorkerType type>
-auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
+template <detail::worker_type type>
+auto threadpool<A, B, C>::make_worker(unsigned int thread_id)
 {
     auto worker = [this, thread_id]() -> void {
         std::unique_lock work_lock(m_pending_work_mutex, std::defer_lock_t{});
@@ -608,7 +608,7 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
         {
             work_lock.lock();
 
-            if constexpr (type == WorkerType::wait_until_shutdown)
+            if constexpr (type == worker_type::wait_until_shutdown)
             {
                 // If we're shutting down or there's work to process, then stop waiting
                 // The predicate is checked before we wait, so if we have shut down between now and executing the last job
@@ -617,8 +617,8 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
                     return m_shutting_down || !m_pending_work.empty();
                 });
             }
-            else if constexpr (type == WorkerType::wait_until_shutdown_or_no_pending_work
-                               || type == WorkerType::do_once_if_any_pending)
+            else if constexpr (type == worker_type::wait_until_shutdown_or_no_pending_work
+                               || type == worker_type::do_once_if_any_pending)
             {
                 // It's important to grab the lock before this
                 //   so that new work doesn't come in after checking but before we return
@@ -627,7 +627,7 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
             }
             else
             {
-                static_assert(type == WorkerType::wait_until_shutdown, "internal error: unknown worker type");
+                static_assert(type == worker_type::wait_until_shutdown, "internal error: unknown worker type");
             }
 
             if (m_shutting_down)
@@ -644,7 +644,7 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
             ++m_total_work_executed[thread_id];
             --m_work_executing;
 
-            if constexpr (type == WorkerType::do_once_if_any_pending)
+            if constexpr (type == worker_type::do_once_if_any_pending)
                 return;
         }
     };
@@ -652,9 +652,9 @@ auto Threadpool<A, B, C>::make_worker(unsigned int thread_id)
     return worker;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, B, C>::make_job(F&& func, Args&&... args) -> std::shared_ptr<std::packaged_task<std::invoke_result_t<F, Args...>()>>
+auto threadpool<A, B, C>::make_job(F&& func, Args&&... args) -> std::shared_ptr<std::packaged_task<std::invoke_result_t<F, Args...>()>>
 {
     auto task = make_task(std::forward<F>(func), std::forward<Args>(args)...);
     // todo: we need to wrap the packaged task in a shared_ptr to make it copyable for storing in a std::function
@@ -663,9 +663,9 @@ auto Threadpool<A, B, C>::make_job(F&& func, Args&&... args) -> std::shared_ptr<
     return job;
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename F, typename... Args>
-auto Threadpool<A, B, C>::make_task(F&& func, Args&&... args)
+auto threadpool<A, B, C>::make_task(F&& func, Args&&... args)
 {
     if constexpr (sizeof...(args) == 0)
     {
@@ -688,9 +688,9 @@ auto Threadpool<A, B, C>::make_task(F&& func, Args&&... args)
     }
 }
 
-template <ThreadpoolPolicyPendingWork A, ThreadpoolPolicyNewWork B, typename C>
+template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename C>
 template <typename F>
-void Threadpool<A, B, C>::push_work(F&& func)
+void threadpool<A, B, C>::push_work(F&& func)
 {
     auto perform_job = [work = std::forward<F>(func)]() mutable -> void {
         if constexpr (std::is_invocable<F>())

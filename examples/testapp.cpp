@@ -1,5 +1,5 @@
 //LIBS
-#include <thread_pool/Threadpool.hpp>
+#include <threadpool/threadpool.hpp>
 
 //STD
 #include <iostream>
@@ -44,9 +44,9 @@ public:
 };
 
 template <
-    zx::ThreadpoolPolicyPendingWork pending_work_policy = zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish,
-    zx::ThreadpoolPolicyNewWork new_work_policy = zx::ThreadpoolPolicyNewWork::configurable_and_forbidden_when_stopping>
-using ThreadpoolConsoleTracing = zx::Threadpool<pending_work_policy, new_work_policy, zx::ThreadpoolTracingLogger<ThreadpoolConsoleLogger>>;
+    zx::threadpool_policy_pending_work pending_work_policy = zx::threadpool_policy_pending_work::wait_for_work_to_finish,
+    zx::threadpool_policy_new_work new_work_policy = zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping>
+using ThreadpoolConsoleTracing = zx::threadpool<pending_work_policy, new_work_policy, zx::threadpool_tracing_logger<ThreadpoolConsoleLogger>>;
 
 int main()
 {
@@ -91,7 +91,7 @@ int main()
         auto start_time = std::chrono::high_resolution_clock::now();
 
         {
-            zx::Threadpool<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(thread_count);
+            zx::threadpool<zx::threadpool_policy_pending_work::wait_for_work_to_finish> consumer(thread_count);
         }
 
         const auto end_time = std::chrono::high_resolution_clock::now();
@@ -101,8 +101,8 @@ int main()
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
 
     {
-        ThreadpoolConsoleTracing<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> producer(1);
-        ThreadpoolConsoleTracing<zx::ThreadpoolPolicyPendingWork::wait_for_work_to_finish> consumer(1);
+        ThreadpoolConsoleTracing<zx::threadpool_policy_pending_work::wait_for_work_to_finish> producer(1);
+        ThreadpoolConsoleTracing<zx::threadpool_policy_pending_work::wait_for_work_to_finish> consumer(1);
 
         for (int i = 0; i < task_count; ++i)
         {
