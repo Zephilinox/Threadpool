@@ -44,7 +44,12 @@ if (THREADPOOL_UBSAN)
     include(SanitizeUndefinedBehaviour)
 endif()
 
-add_library(threadpool INTERFACE "include/threadpool/threadpool.hpp")
+add_library(threadpool INTERFACE
+    "include/threadpool/threadpool.hpp"
+    "include/threadpool/tracers/tracing_logger.hpp"
+    "include/threadpool/tracers/tracing_console_logger.hpp"
+)
+add_library(threadpool::threadpool ALIAS threadpool)
 target_include_directories(threadpool INTERFACE
     $<BUILD_INTERFACE:${threadpool_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>

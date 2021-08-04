@@ -7,4 +7,7 @@ CPMAddPackage(
         DOCTEST_WITH_MAIN_IN_STATIC_LIB "OFF"
 )
 
+file(GLOB_RECURSE doctest_SOURCES CONFIGURE_DEPENDS ${doctest_SOURCE_DIR}/*.hpp ${doctest_SOURCE_DIR}/*.h ${doctest_SOURCE_DIR}/*.c ${doctest_SOURCE_DIR}/*.cpp)
+
+source_group(TREE ${doctest_SOURCE_DIR} FILES ${doctest_SOURCES})
 set_target_properties(doctest PROPERTIES FOLDER dependencies)

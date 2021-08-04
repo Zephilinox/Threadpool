@@ -7,6 +7,7 @@ CPMAddPackage(
 
 file(GLOB_RECURSE asio_SOURCES CONFIGURE_DEPENDS ${asio_SOURCE_DIR}/*.hpp ${asio_SOURCE_DIR}/*.h ${asio_SOURCE_DIR}/*.c ${asio_SOURCE_DIR}/*.cpp)
 add_library(asio INTERFACE ${asio_SOURCES})
+add_library(asio::asio ALIAS asio)
 target_include_directories(asio INTERFACE
     "${asio_SOURCE_DIR}/asio/include"
 )

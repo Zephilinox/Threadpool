@@ -13,9 +13,9 @@ configure_target(threadpool_benchmarks)
 
 target_link_libraries(threadpool_benchmarks
     PRIVATE
-        threadpool
+        threadpool::threadpool
         benchmark::benchmark
-        asio
+        asio::asio
 )
 
 add_custom_target(threadpool_benchmarks_execute
