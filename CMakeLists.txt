@@ -46,6 +46,7 @@ endif()
 
 add_library(threadpool INTERFACE
     "include/threadpool/threadpool.hpp"
+    "include/threadpool/tracers/tracing_nothing.hpp"
     "include/threadpool/tracers/tracing_logger.hpp"
     "include/threadpool/tracers/tracing_console_logger.hpp"
 )

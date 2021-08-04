@@ -4,6 +4,7 @@
 
 //LIBS
 #include <threadpool/threadpool.hpp>
+#include <threadpool/tracers/tracing_nothing.hpp>
 
 //STD
 
