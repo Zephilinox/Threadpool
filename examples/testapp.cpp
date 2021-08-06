@@ -12,9 +12,9 @@ int main()
 
     float task_baseline_nanoseconds = 0;
 
-    constexpr auto task_iterations = 1;
+    constexpr auto task_iterations = 10000;
     constexpr auto thread_count = 1;
-    constexpr auto task_count = 100000;
+    constexpr auto task_count = 10;
     futures.reserve(task_count);
     futures2.reserve(task_count);
 
