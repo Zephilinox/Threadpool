@@ -79,72 +79,113 @@ struct MoveOnlyFunctor
     std::unique_ptr<int> five = std::make_unique<int>(5);
 };
 
-template <typename T>
-struct LoggerFunctor
+struct CounterState
 {
-    LoggerFunctor(std::string n)
+    bool operator==(const CounterState& rhs) const
+    {
+        return constructor == rhs.constructor
+            && copy_constructor == rhs.copy_constructor
+            && move_constructor == rhs.move_constructor
+            && copy_assign == rhs.copy_assign
+            && move_assign == rhs.move_assign
+            && destructor == rhs.destructor
+            && rvalue_call == rhs.rvalue_call
+            && lvalue_call == rhs.lvalue_call
+            && const_lvalue_call == rhs.const_lvalue_call
+            && const_rvalue_call == rhs.const_rvalue_call;
+    }
+    unsigned int constructor = 0;
+    unsigned int copy_constructor = 0;
+    unsigned int move_constructor = 0;
+    unsigned int copy_assign = 0;
+    unsigned int move_assign = 0;
+    unsigned int destructor = 0;
+    unsigned int rvalue_call = 0;
+    unsigned int lvalue_call = 0;
+    unsigned int const_lvalue_call = 0;
+    unsigned int const_rvalue_call = 0;
+};
+
+struct CounterFunctor
+{
+    CounterFunctor(std::string n, CounterState* state)
         : name(n + " ")
+        , state(state)
     {
-        std::cout << name << "construct LoggerFunctor\n";
+        //std::cout << name << "construct CounterFunctor\n";
+        state->constructor++;
     }
 
-    ~LoggerFunctor()
+    ~CounterFunctor()
     {
-        std::cout << name << "destroy LoggerFunctor\n";
+        //std::cout << name << "destroy CounterFunctor\n";
+        state->destructor++;
     }
 
-    LoggerFunctor(const LoggerFunctor& rhs)
+    CounterFunctor(const CounterFunctor& rhs)
     {
         name = rhs.name;
-        std::cout << name << "copy construct LoggerFunctor\n";
+        state = rhs.state;
+        state->copy_constructor++;
+        //std::cout << name << "copy construct CounterFunctor\n";
     }
 
-    LoggerFunctor(LoggerFunctor&& rhs) noexcept
+    CounterFunctor(CounterFunctor&& rhs) noexcept
     {
         name = rhs.name;
-        std::cout << name << "move construct LoggerFunctor\n";
+        state = rhs.state;
+        state->move_constructor++;
+        //std::cout << name << "move construct CounterFunctor\n";
     }
 
-    LoggerFunctor& operator=(const LoggerFunctor& rhs)
+    CounterFunctor& operator=(const CounterFunctor& rhs)
     {
         name = rhs.name;
-        std::cout << name << "copy assign LoggerFunctor\n";
+        state = rhs.state;
+        state->copy_assign++;
+        //std::cout << name << "copy assign CounterFunctor\n";
         return *this;
     }
 
-    LoggerFunctor& operator==(LoggerFunctor&& rhs) noexcept
+    CounterFunctor& operator==(CounterFunctor&& rhs) noexcept
     {
         name = rhs.name;
-        std::cout << name << "move assign LoggerFunctor\n";
+        state = rhs.state;
+        state->move_assign++;
+        //std::cout << name << "move assign CounterFunctor\n";
         return *this;
     }
 
     template <typename T2>
     void operator()(T2&& t2) &
     {
-        std::cout << name << "called LoggerFunctor&\n";
+        //std::cout << name << "called CounterFunctor&\n";
+        state->lvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&& t2) &&
     {
-        std::cout << name << "called LoggerFunctor&& \n";
+        //std::cout << name << "called CounterFunctor&& \n";
+        state->rvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&& t2) const&
     {
-        std::cout << name << "called const LoggerFunctor&\n";
+        //std::cout << name << "called const CounterFunctor&\n";
+        state->const_lvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&& t2) const&&
     {
-        std::cout << name << "called const LoggerFunctor&\n";
+        //std::cout << name << "called const CounterFunctor&\n";
+        state->const_rvalue_call++;
     }
 
-    T t;
     std::string name;
+    CounterState* state;
 };
 
 template <
@@ -155,18 +196,32 @@ using threadpool_function2 = zx::threadpool<A, B, void, fu2::unique_function<voi
 
 TEST_SUITE("Tasks")
 {
-    /*TEST_CASE("LoggerFunctor")
+    TEST_CASE("Ensure functors and arguments don't copy unexpectedly")
     {
-        ThreadpoolConsoleTracing<> pool(1);
-        auto logger1 = LoggerFunctor<std::shared_ptr<int>>("a");
-        logger1.t = std::make_shared<int>(1);
-        auto logger2 = LoggerFunctor<std::shared_ptr<int>>("b");
-        logger2.t = std::make_shared<int>(5);
+        CounterState argument;
+        CounterState function;
+        zx::threadpool pool(1);
+        auto logger1 = CounterFunctor("argument", &argument);
+        auto logger2 = CounterFunctor("function", &function);
         pool.push_task(std::move(logger2), std::move(logger1));
 
         pool.wait_all();
         CHECK_EQ(pool.work_executed_total(), 1);
-    }*/
+        CHECK_EQ(function.rvalue_call, 1);
+
+        CounterState function_without_call = function;
+        --function_without_call.rvalue_call;
+        CHECK_EQ(argument, function_without_call);
+        CHECK_EQ(argument.constructor, 1);
+        CHECK_EQ(argument.move_constructor, 6); //note: reductions are good, but wanna know when they happen
+        CHECK_EQ(argument.destructor, 6); //note: reductions are good, but wanna know when they happen
+        CHECK_EQ(argument.copy_constructor, 0);
+        CHECK_EQ(argument.copy_assign, 0);
+        CHECK_EQ(argument.move_assign, 0);
+        CHECK_EQ(argument.lvalue_call, 0);
+        CHECK_EQ(argument.const_lvalue_call, 0);
+        CHECK_EQ(argument.const_rvalue_call, 0);
+    }
 
     TEST_CASE("Lambdas with no captures, returns, or parameters")
     {
