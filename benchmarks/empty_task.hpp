@@ -85,7 +85,7 @@ static auto benchmark_threadpool_empty_job_push(benchmark::State& state) -> void
     {
         for (int i = 0; i < empty_task_count; ++i)
             futures.emplace_back(producers.push_job(produce));
-        
+
         for (int i = 0; i < empty_task_count; ++i)
             futures[i]->wait();
     }
@@ -104,7 +104,7 @@ static auto benchmark_threadpool_empty_job_execute(benchmark::State& state) -> v
     {
         for (int i = 0; i < empty_task_count; ++i)
             futures.emplace_back(threadpool.push_job(&empty_task));
-        
+
         for (int i = 0; i < empty_task_count; ++i)
             futures[i]->wait();
     }

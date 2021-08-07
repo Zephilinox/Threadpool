@@ -17,4 +17,5 @@ target_link_libraries(threadpool_tests
 )
 
 include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
-doctest_discover_tests(threadpool_tests JUNIT_OUTPUT_DIR ".")
+#doctest_discover_tests(threadpool_tests JUNIT_OUTPUT_DIR ".")
+doctest_discover_tests(threadpool_tests)

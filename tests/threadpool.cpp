@@ -84,26 +84,26 @@ struct CounterState
     bool operator==(const CounterState& rhs) const
     {
         return constructor == rhs.constructor
-            && copy_constructor == rhs.copy_constructor
-            && move_constructor == rhs.move_constructor
-            && copy_assign == rhs.copy_assign
-            && move_assign == rhs.move_assign
-            && destructor == rhs.destructor
-            && rvalue_call == rhs.rvalue_call
-            && lvalue_call == rhs.lvalue_call
-            && const_lvalue_call == rhs.const_lvalue_call
-            && const_rvalue_call == rhs.const_rvalue_call;
+               && copy_constructor == rhs.copy_constructor
+               && move_constructor == rhs.move_constructor
+               && copy_assign == rhs.copy_assign
+               && move_assign == rhs.move_assign
+               && destructor == rhs.destructor
+               && rvalue_call == rhs.rvalue_call
+               && lvalue_call == rhs.lvalue_call
+               && const_lvalue_call == rhs.const_lvalue_call
+               && const_rvalue_call == rhs.const_rvalue_call;
     }
-    unsigned int constructor = 0;
-    unsigned int copy_constructor = 0;
-    unsigned int move_constructor = 0;
-    unsigned int copy_assign = 0;
-    unsigned int move_assign = 0;
-    unsigned int destructor = 0;
-    unsigned int rvalue_call = 0;
-    unsigned int lvalue_call = 0;
-    unsigned int const_lvalue_call = 0;
-    unsigned int const_rvalue_call = 0;
+    std::atomic<unsigned int> constructor = 0;
+    std::atomic<unsigned int> copy_constructor = 0;
+    std::atomic<unsigned int> move_constructor = 0;
+    std::atomic<unsigned int> copy_assign = 0;
+    std::atomic<unsigned int> move_assign = 0;
+    std::atomic<unsigned int> destructor = 0;
+    std::atomic<unsigned int> rvalue_call = 0;
+    std::atomic<unsigned int> lvalue_call = 0;
+    std::atomic<unsigned int> const_lvalue_call = 0;
+    std::atomic<unsigned int> const_rvalue_call = 0;
 };
 
 struct CounterFunctor
@@ -194,87 +194,150 @@ template <
     typename C = void>
 using threadpool_function2 = zx::threadpool<A, B, void, fu2::unique_function<void()>>;
 
-TEST_SUITE("Tasks")
+template <typename Threadpool, typename Work, typename... WorkArgs>
+void push_job_or_task_and_wait(bool is_task, Threadpool& pool, Work&& work, WorkArgs&&... work_args)
+{
+    if (is_task)
+    {
+        pool.push_task(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
+        pool.wait_all();
+        return;
+    }
+
+    if constexpr (Threadpool::policy_new_work_v == zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
+    {
+        auto optional_future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
+        (*optional_future).wait();
+    }
+    else
+    {
+        auto future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
+        future.wait();
+    }
+}
+
+TEST_SUITE("Pushing Tasks & Jobs")
 {
     TEST_CASE("Ensure functors and arguments don't copy unexpectedly")
     {
-        CounterState argument;
-        CounterState function;
-        zx::threadpool pool(1);
-        auto logger1 = CounterFunctor("argument", &argument);
-        auto logger2 = CounterFunctor("function", &function);
-        pool.push_task(std::move(logger2), std::move(logger1));
+        auto test = [](bool is_task, unsigned int expected_moves) {
+            CounterState argument;
+            CounterState function;
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 1);
-        CHECK_EQ(function.rvalue_call, 1);
+            {
+                zx::threadpool pool(1);
+                auto logger1 = CounterFunctor("argument", &argument);
+                auto logger2 = CounterFunctor("function", &function);
+                push_job_or_task_and_wait(is_task, pool, std::move(logger2), std::move(logger1));
 
-        CounterState function_without_call = function;
-        --function_without_call.rvalue_call;
-        CHECK_EQ(argument, function_without_call);
-        CHECK_EQ(argument.constructor, 1);
-        CHECK_EQ(argument.move_constructor, 6); //note: reductions are good, but wanna know when they happen
-        CHECK_EQ(argument.destructor, 6); //note: reductions are good, but wanna know when they happen
-        CHECK_EQ(argument.copy_constructor, 0);
-        CHECK_EQ(argument.copy_assign, 0);
-        CHECK_EQ(argument.move_assign, 0);
-        CHECK_EQ(argument.lvalue_call, 0);
-        CHECK_EQ(argument.const_lvalue_call, 0);
-        CHECK_EQ(argument.const_rvalue_call, 0);
+                CHECK_EQ(pool.work_executed_total(), 1);
+
+                argument.rvalue_call++;
+                CHECK_EQ(argument, function);
+                CHECK_EQ(argument.constructor, 1);
+                CHECK_EQ(argument.move_constructor, expected_moves); //note: reductions are good, but wanna know when they happen
+                CHECK_EQ(argument.copy_constructor, 0);
+                CHECK_EQ(argument.copy_assign, 0);
+                CHECK_EQ(argument.move_assign, 0);
+                CHECK_EQ(argument.lvalue_call, 0);
+                CHECK_EQ(argument.const_lvalue_call, 0);
+                CHECK_EQ(argument.const_rvalue_call, 0);
+            }
+
+            // there's no guarantee that all of the destructors were called after waiting, as the moved-from object could still be in scope
+            // therefore we don't check right away, but after the destruction of the threadpool, it should be accurate
+            // I don't think blocking until the last moved-from objects destructor finishes is important functionality...?
+            // We add 1 as destructor calls should be moves + constructor, which we've already checked is 1
+            CHECK_EQ(argument.destructor, expected_moves + 1); //note: reductions are good, but wanna know when they happen
+        };
+
+        test(true, 6);
+        //yeah...
+        #if defined(__unix__) || defined(__APPLE__)
+            test(false, 4); //megatodo: why is this megaless?
+        #else
+            test(false, 5); //todo: why is this less?
+        #endif
     }
 
     TEST_CASE("Lambdas with no captures, returns, or parameters")
     {
-        zx::threadpool pool(1);
-        pool.push_task([]() mutable {});
-        pool.push_task([]() mutable noexcept {});
-        pool.push_task([]() constexpr {});
-        pool.push_task([]() constexpr noexcept {});
-        pool.push_task([]() {});
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
+            push_job_or_task_and_wait(is_task, pool, []() mutable {});
+            push_job_or_task_and_wait(is_task, pool, []() mutable noexcept {});
+            push_job_or_task_and_wait(is_task, pool, []() constexpr {});
+            push_job_or_task_and_wait(is_task, pool, []() constexpr noexcept {});
+            push_job_or_task_and_wait(is_task, pool, []() {});
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 5);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 5);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("Lambdas that return with no captures")
     {
-        zx::threadpool pool(1);
-        pool.push_task([]() mutable { return 5; });
-        pool.push_task([]() mutable noexcept { return 5; });
-        pool.push_task([]() constexpr { return 5; });
-        pool.push_task([]() constexpr noexcept { return 5; });
-        pool.push_task([]() { return 5; });
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
+            push_job_or_task_and_wait(is_task, pool, []() mutable { return 5; });
+            push_job_or_task_and_wait(is_task, pool, []() mutable noexcept { return 5; });
+            push_job_or_task_and_wait(
+                is_task, pool, []() constexpr { return 5; });
+            push_job_or_task_and_wait(
+                is_task, pool, []() constexpr noexcept { return 5; });
+            push_job_or_task_and_wait(is_task, pool, []() { return 5; });
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 5);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 5);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("Lambdas that return copyable value capture")
     {
-        zx::threadpool pool(1);
-        int five = 5;
-        pool.push_task([five]() mutable { CHECK_EQ(five, 5); return five; });
-        pool.push_task([five]() mutable noexcept { CHECK_EQ(five, 5); return five; });
-        pool.push_task([five]() constexpr { return five; });
-        pool.push_task([five]() constexpr noexcept { return five; });
-        pool.push_task([five]() { CHECK_EQ(five, 5); return five; });
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
+            int five = 5;
+            push_job_or_task_and_wait(is_task, pool, [five]() mutable { CHECK_EQ(five, 5); return five; });
+            push_job_or_task_and_wait(is_task, pool, [five]() mutable noexcept { CHECK_EQ(five, 5); return five; });
+            push_job_or_task_and_wait(
+                is_task, pool, [five]() constexpr { return five; });
+            push_job_or_task_and_wait(
+                is_task, pool, [five]() constexpr noexcept { return five; });
+            push_job_or_task_and_wait(is_task, pool, [five]() { CHECK_EQ(five, 5); return five; });
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 5);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 5);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("Lambdas that return copyable reference capture")
     {
-        zx::threadpool pool(1);
-        int five = 5;
-        pool.push_task([&five]() mutable { CHECK_EQ(five, 5); return five; });
-        pool.push_task([&five]() mutable noexcept { CHECK_EQ(five, 5); return five; });
-        pool.push_task([&five]() constexpr { return five; });
-        pool.push_task([&five]() constexpr noexcept { return five; });
-        pool.push_task([&five]() { CHECK_EQ(five, 5); return five; });
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
+            int five = 5;
+            push_job_or_task_and_wait(is_task, pool, [&five]() mutable { CHECK_EQ(five, 5); return five; });
+            push_job_or_task_and_wait(is_task, pool, [&five]() mutable noexcept { CHECK_EQ(five, 5); return five; });
+            push_job_or_task_and_wait(
+                is_task, pool, [&five]() constexpr { return five; });
+            push_job_or_task_and_wait(
+                is_task, pool, [&five]() constexpr noexcept { return five; });
+            push_job_or_task_and_wait(is_task, pool, [&five]() { CHECK_EQ(five, 5); return five; });
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 5);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 5);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("Lambdas can have unique_ptr arguments")
@@ -291,66 +354,91 @@ TEST_SUITE("Tasks")
 
     TEST_CASE("Lambdas can have unique_ptr&& arguments")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        pool.push_task([](std::unique_ptr<int>&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](std::unique_ptr<int>&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](std::unique_ptr<int>&& five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 3);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 3);
+        };
+
+        test(true);
     }
 
     TEST_CASE("Lambdas can have auto unique_ptr arguments")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        pool.push_task([](auto five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](auto five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](auto five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 3);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 3);
+        };
+
+        test(true);
     }
 
     TEST_CASE("Lambdas can have auto&& unique_ptr arguments")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        pool.push_task([](auto&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](auto&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-        pool.push_task([](auto&& five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](auto&& five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 3);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 3);
+        };
+
+        test(true);
     }
 
     TEST_CASE("Function2 Lambdas can have unique_ptr captures")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        auto five = std::make_unique<int>(5);
-        pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return *five; });
-        five = std::make_unique<int>(5);
-        pool.push_task([five = std::move(five)]() mutable noexcept { CHECK_EQ(*five, 5); return *five; });
-        five = std::make_unique<int>(5);
-        pool.push_task([five = std::move(five)]() { CHECK_EQ(*five, 5); return *five; });
+            auto five = std::make_unique<int>(5);
+            pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return *five; });
+            five = std::make_unique<int>(5);
+            pool.push_task([five = std::move(five)]() mutable noexcept { CHECK_EQ(*five, 5); return *five; });
+            five = std::make_unique<int>(5);
+            pool.push_task([five = std::move(five)]() { CHECK_EQ(*five, 5); return *five; });
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 3);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 3);
+        };
+
+        test(true);
     }
 
     TEST_CASE("Function2 Lambdas can move unique_ptr captures")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        auto five = std::make_unique<int>(5);
-        pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return std::move(five); });
-        five = std::make_unique<int>(5);
-        pool.push_task([five = std::move(five)]() mutable noexcept { CHECK_EQ(*five, 5); return std::move(five); });
+            auto five = std::make_unique<int>(5);
+            pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return std::move(five); });
+            five = std::make_unique<int>(5);
+            pool.push_task([five = std::move(five)]() mutable noexcept { CHECK_EQ(*five, 5); return std::move(five); });
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 2);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 2);
+        };
+
+        test(true);
     }
 
     TEST_CASE("Function2 MoveOnlyFunctor is valid")
@@ -366,40 +454,55 @@ TEST_SUITE("Tasks")
 
     TEST_CASE("ConstOnlyFunctor is valid")
     {
-        zx::threadpool pool(1);
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
 
-        ConstOnlyFunctor cof;
-        pool.push_task(cof);
+            ConstOnlyFunctor cof;
+            push_job_or_task_and_wait(is_task, pool, cof);
 
-        const ConstOnlyFunctor cof2;
-        pool.push_task(cof2);
+            const ConstOnlyFunctor cof2;
+            push_job_or_task_and_wait(is_task, pool, cof2);
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 2);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 2);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("NormalFunctor is valid")
     {
-        zx::threadpool pool(1);
+        auto test = [](bool is_task) {
+            zx::threadpool pool(1);
 
-        NormalFunctor nf;
-        pool.push_task(nf);
+            NormalFunctor nf;
+            push_job_or_task_and_wait(is_task, pool, nf);
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 1);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 1);
+        };
+
+        test(true);
+        test(false);
     }
 
     TEST_CASE("NormalFunctorMoveOnlyParam for std::unique_ptr is valid")
     {
-        threadpool_function2<> pool(1);
+        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        auto test = [](bool is_task) {
+            threadpool_function2<> pool(1);
 
-        NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
-        pool.push_task(nfmop, std::make_unique<int>(5));
+            NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
+            pool.push_task(nfmop, std::make_unique<int>(5));
 
-        NormalFunctorMoveOnlyParam<std::unique_ptr<int>&&> nfmop3;
-        pool.push_task(nfmop3, std::make_unique<int>(5));
+            NormalFunctorMoveOnlyParam<std::unique_ptr<int>&&> nfmop3;
+            pool.push_task(nfmop3, std::make_unique<int>(5));
 
-        pool.wait_all();
-        CHECK_EQ(pool.work_executed_total(), 2);
+            pool.wait_all();
+            CHECK_EQ(pool.work_executed_total(), 2);
+        };
+
+        test(true);
     }
 }

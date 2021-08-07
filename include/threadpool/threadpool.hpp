@@ -650,7 +650,7 @@ auto threadpool<A, B, Tracer, D>::make_task(F&& func, Args&&... args)
     {
         auto func_and_args_as_tuple = std::make_tuple(std::forward<F>(func), std::forward<Args>(args)...);
 
-        //todo: C++20 allows for parameter pack captures: `a = ...std::move(a)`
+        //todo: C++20 allows for parameter pack captures: `...a = std::move(a)`
         auto task = [func_and_args_as_tuple = std::move(func_and_args_as_tuple)]() mutable -> decltype(auto) {
             return std::apply([](auto&& func, auto&&... args) mutable -> decltype(auto) {
                 //forward/move the function so it has rvalue qualifiers for better optimisations
