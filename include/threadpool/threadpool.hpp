@@ -603,9 +603,12 @@ auto threadpool<A, B, Tracer, D>::make_worker(unsigned int thread_id)
 
             ++m_work_executing;
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_executing_start<type>, thread_id);
+            //if the work is a future and someone blocks on it then
+            // between the future becoming ready and someone checking the total work
+            // there could be a race, so instead we increment before the call
+            ++m_total_work_executed[thread_id];
             std::move(job)();
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_executing_done<type>, thread_id);
-            ++m_total_work_executed[thread_id];
             --m_work_executing;
 
             if constexpr (type == worker_t::do_once_if_any_pending)
