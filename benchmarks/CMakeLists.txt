@@ -9,11 +9,11 @@ add_executable(threadpool_benchmarks "main.cpp"
     "asio_bench.hpp"
 )
 
-configure_target(threadpool_benchmarks)
+configure_target(threadpool_benchmarks ${THREADPOOL_CODE_COVERAGE})
 
 target_link_libraries(threadpool_benchmarks
     PRIVATE
-        threadpool::threadpool
+        zx::threadpool
         benchmark::benchmark
         asio::asio
 )

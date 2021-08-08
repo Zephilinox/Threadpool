@@ -7,11 +7,11 @@ add_executable(threadpool_tests
     "threadpool.cpp"
 )
 
-configure_target(threadpool_tests)
+configure_target(threadpool_tests ${THREADPOOL_CODE_COVERAGE})
 
 target_link_libraries(threadpool_tests
     PRIVATE
-        threadpool::threadpool
+        zx::threadpool
         doctest::doctest
         function2::function2
 )

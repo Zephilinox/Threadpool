@@ -1,6 +1,6 @@
 # Threadpool
 
-[![Threadpool](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml/badge.svg)](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml)
+[![Threadpool](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml/badge.svg)](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml) [![codecov](https://codecov.io/gh/Zephilinox/Threadpool/branch/main/graph/badge.svg?token=n9P9btRBNe)](https://codecov.io/gh/Zephilinox/Threadpool)
 
 A configurable but slow threadpool, backed by `std::queue` and `std::mutex`
 

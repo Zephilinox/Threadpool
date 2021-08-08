@@ -18,6 +18,8 @@ option(THREADPOOL_ASAN "Build with ASAN" OFF)
 option(THREADPOOL_LSAN "Build with LSAN" OFF)
 option(THREADPOOL_TSAN "Build with TSAN" OFF)
 option(THREADPOOL_UBSAN "Build with UBSAN" OFF)
+option(THREADPOOL_CODE_COVERAGE "Enable code coverage" OFF)
+#todo: nicer way to default it to on
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Exports compile commands (if available)" ${THREADPOOL_IS_ROOT})
 
 if (THREADPOOL_IS_ROOT)
@@ -50,7 +52,7 @@ add_library(threadpool INTERFACE
     "include/threadpool/tracers/tracing_logger.hpp"
     "include/threadpool/tracers/tracing_console_logger.hpp"
 )
-add_library(threadpool::threadpool ALIAS threadpool)
+add_library(zx::threadpool ALIAS threadpool)
 target_include_directories(threadpool INTERFACE
     $<BUILD_INTERFACE:${threadpool_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -61,7 +63,7 @@ if (UNIX AND NOT APPLE)
 endif () 
 
 include(ConfigureTarget)
-configure_target(threadpool)
+configure_target(threadpool OFF)
 
 if (THREADPOOL_INSTALL)
     install(

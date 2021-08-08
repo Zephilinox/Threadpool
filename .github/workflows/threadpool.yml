@@ -21,6 +21,7 @@ jobs:
             cxx: "clang++",
             generators: "Ninja",
             ccache: "ON",
+            code_coverage: "OFF",
           }
         - {
             name: "ubuntu-gcc",
@@ -30,11 +31,26 @@ jobs:
             cxx: "g++",
             generators: "Ninja",
             ccache: "ON",
+            code_coverage: "OFF",
+          }
+        - {
+            name: "ubuntu-gcc-codecoverage",
+            os: ubuntu-latest,
+            build_type: "Debug",
+            cc: "gcc",
+            cxx: "g++",
+            generators: "Ninja",
+            ccache: "ON",
+            asan: "OFF",
+            lsan: "OFF",
+            tsan: "OFF",
+            ubsan: "OFF",
+            code_coverage: "ON",
           }
         - {
             name: "ubuntu-gcc-asan",
             os: ubuntu-latest,
-            build_type: "ASAN",
+            build_type: "Debug",
             cc: "gcc",
             cxx: "g++",
             generators: "Ninja",
@@ -43,6 +59,7 @@ jobs:
             lsan: "OFF",
             tsan: "OFF",
             ubsan: "OFF",
+            code_coverage: "OFF",
           }
         - {
             name: "ubuntu-gcc-lsan",
@@ -56,6 +73,7 @@ jobs:
             lsan: "ON",
             tsan: "OFF",
             ubsan: "OFF",
+            code_coverage: "OFF",
           }
         - {
             name: "ubuntu-gcc-tsan",
@@ -69,6 +87,7 @@ jobs:
             lsan: "OFF",
             tsan: "ON",
             ubsan: "OFF",
+            code_coverage: "OFF",
           }
         - {
             name: "ubuntu-gcc-ubsan",
@@ -82,6 +101,7 @@ jobs:
             lsan: "OFF",
             tsan: "OFF",
             ubsan: "ON",
+            code_coverage: "OFF",
           }
         - {
             name: "windows-msvc-vs2019",
@@ -92,6 +112,7 @@ jobs:
             environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
             generators: "Visual Studio 16 2019",
             ccache: "OFF",
+            code_coverage: "OFF",
           }
         - {
             name: "macos-clang",
@@ -101,6 +122,7 @@ jobs:
             cxx: "clang++",
             generators: "Ninja",
             ccache: "ON",
+            code_coverage: "OFF",
           }
     steps:
       - uses: actions/checkout@v2
@@ -174,6 +196,7 @@ jobs:
             -DTHREADPOOL_LSAN=${{ matrix.config.lsan }} \
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
+            -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
             -G "${{ matrix.config.generators }}"
 
       - name: Configure
@@ -193,6 +216,7 @@ jobs:
             -DTHREADPOOL_LSAN=${{ matrix.config.lsan }} \
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
+            -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
             -G "${{ matrix.config.generators }}"
 
       - name: Build
@@ -218,6 +242,21 @@ jobs:
         run: |
           ls -laR
           7z a ../${{ matrix.config.name }}.7z .
+
+      - name: Codecov
+        if: matrix.config.code_coverage == 'ON'
+        shell: bash
+        working-directory: build
+        run: |
+          mkdir lcov
+          wget -c https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15.tar.gz -O - | tar -xz -C lcov/
+          cd lcov/lcov-1.15
+          sudo make install
+          cd ../..
+          ./lcov/lcov-1.15/bin/lcov --capture --directory . --output-file coverage.info
+          ./lcov/lcov-1.15/bin/lcov --remove coverage.info '*/build/_deps/*' '*/tests/*' '*/examples/*' '*/benchmarks/*' '*/.ccache/*' '*/.cpmcache/*' '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
+          ./lcov/lcov-1.15/bin/lcov --list coverage.info
+          bash <(curl -s https://codecov.io/bash) -f coverage.info -t ${{ secrets.CODECOV_TOKEN }} || echo "Codecov did not collect coverage reports"
 
       - name: Upload Build Developer Logs
         uses: actions/upload-artifact@v2
