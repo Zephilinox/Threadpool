@@ -5,7 +5,8 @@ endif()
 
 add_compile_options(
     "-fsanitize=leak"
-    "-fno-omit-frame-pointer"
     "-g"
-    "-O1")
+    "-O1"
+    "-fno-omit-frame-pointer"
+)
 add_link_options("-fsanitize=leak")

@@ -6,5 +6,7 @@ endif()
 add_compile_options(
     "-fsanitize=thread"
     "-g"
-    "-O1")
+    "-O1"
+    "-fno-omit-frame-pointer"
+)
 add_link_options("-fsanitize=thread")

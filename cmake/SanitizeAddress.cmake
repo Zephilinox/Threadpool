@@ -7,7 +7,8 @@ add_compile_options(
     "-fsanitize=address"
     "-fno-optimize-sibling-calls"
     "-fsanitize-address-use-after-scope"
-    "-fno-omit-frame-pointer"
     "-g"
-    "-O1")
+    "-O1"
+    "-fno-omit-frame-pointer"
+)
 add_link_options("-fsanitize=address")
