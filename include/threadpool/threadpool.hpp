@@ -44,15 +44,15 @@ enum class worker_t
 }
 
 #define THREADPOOL_INTERNAL_TRACE(name) \
-    if constexpr (has_tracing_v)             \
-        tracer_t::name (*this);
+    if constexpr (has_tracing_v)        \
+        tracer_t::name(*this);
 
 #define THREADPOOL_INTERNAL_TRACE_COMPLEX(name, ...) \
-    if constexpr (has_tracing_v)             \
-        tracer_t::name (*this, __VA_ARGS__);
+    if constexpr (has_tracing_v)                     \
+        tracer_t::name(*this, __VA_ARGS__);
 
 #define THREADPOOL_INTERNAL_TRACE_TEMPLATE(name, ...) \
-    if constexpr (has_tracing_v)             \
+    if constexpr (has_tracing_v)                      \
         tracer_t::template name(*this, __VA_ARGS__);
 
 template <
@@ -592,7 +592,7 @@ auto threadpool<A, B, Tracer, D>::make_worker(unsigned int thread_id)
 
             if (m_shutting_down)
                 break;
-        
+
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_grab_work_start<type>, thread_id);
             auto job = std::move(m_pending_work.front());
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_grab_work_done<type>, thread_id);
@@ -611,10 +611,10 @@ auto threadpool<A, B, Tracer, D>::make_worker(unsigned int thread_id)
             if constexpr (type == worker_t::do_once_if_any_pending)
                 break;
         }
-        
+
         THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_done<type>, thread_id);
     };
-    
+
     THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_make_worker_done<type>, thread_id);
     return std::move(worker);
 }

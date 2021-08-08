@@ -139,9 +139,9 @@ public:
     THREADPOOL_INTERNAL_TRACE_FUNC(on_is_allowing_new_work, Logger::LogLevel::debug, "checking if allowing new work")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_is_stopping_or_stopped, Logger::LogLevel::debug, "checking if is stopping or stopped")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_is_stopped, Logger::LogLevel::debug, "checking if is stopped")
-    
+
     THREADPOOL_INTERNAL_TRACE_FUNC_WORKER(on_work_executed, Logger::LogLevel::debug,
-                                   "checking amount of work executed for worker thread " + std::to_string(thread_id))
+                                          "checking amount of work executed for worker thread " + std::to_string(thread_id))
     THREADPOOL_INTERNAL_TRACE_FUNC(on_work_executed_by_others, Logger::LogLevel::debug, "checking amount of work executed by others")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_work_executed_total, Logger::LogLevel::debug, "checking amount of work executed in total")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_work_pending, Logger::LogLevel::debug, "checking amount of work pending")
@@ -154,7 +154,7 @@ public:
     THREADPOOL_INTERNAL_TRACE_FUNC(on_push_task_start, Logger::LogLevel::debug, "pushing new task")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_push_task_done, Logger::LogLevel::debug, "pushed new task")
     THREADPOOL_INTERNAL_TRACE_FUNC(on_push_task_refused, Logger::LogLevel::debug, "refused to push new task")
-    
+
     THREADPOOL_INTERNAL_TRACE_FUNC_WORKER(on_make_worker_start, Logger::LogLevel::debug, "making new worker")
     THREADPOOL_INTERNAL_TRACE_FUNC_WORKER(on_make_worker_done, Logger::LogLevel::debug, "made new worker")
     THREADPOOL_INTERNAL_TRACE_FUNC_WORKER(on_worker_wait_change_in_pending_work_start, Logger::LogLevel::debug,
