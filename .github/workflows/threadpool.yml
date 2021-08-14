@@ -197,6 +197,7 @@ jobs:
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
             -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G "${{ matrix.config.generators }}"
 
       - name: Configure
@@ -217,6 +218,7 @@ jobs:
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
             -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G "${{ matrix.config.generators }}"
 
       - name: Build
@@ -308,3 +310,38 @@ jobs:
           exclude: 'build instdir'
           clangFormatVersion: 9
           inplace: false
+
+  cppcheck:
+    name: cppcheck
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies on ubuntu
+        run: |
+          sudo apt-get install ninja-build
+          sudo apt-get install cppcheck
+          ninja --version
+          cmake --version
+          gcc --version
+          clang --version
+
+      - name: Configure
+        shell: bash
+        run: |
+          mkdir build
+          mkdir instdir
+          cmake \
+            -S . \
+            -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DTHREADPOOL_CPPCHECK=ON \
+            -G "Ninja"
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --target threadpool_cppcheck

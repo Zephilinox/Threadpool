@@ -14,13 +14,12 @@ option(THREADPOOL_INSTALL "Enable cmake install for the threadpool" ${THREADPOOL
 option(THREADPOOL_DOWNLOAD_CPM "Download CPM. Disable if you're providing your own version of CPM" ON)
 option(THREADPOOL_CLANG_FORMAT_CHECK "Adds the threadpool_clang_format_check target" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_CLANG_FORMAT_FIX "Adds the threadpool_clang_format_fix target" ${THREADPOOL_IS_ROOT})
+option(THREADPOOL_CPPCHECK "Adds the threadpool_cppcheck target" OFF)
 option(THREADPOOL_ASAN "Build with ASAN" OFF)
 option(THREADPOOL_LSAN "Build with LSAN" OFF)
 option(THREADPOOL_TSAN "Build with TSAN" OFF)
 option(THREADPOOL_UBSAN "Build with UBSAN" OFF)
 option(THREADPOOL_CODE_COVERAGE "Enable code coverage" OFF)
-#todo: nicer way to default it to on
-option(CMAKE_EXPORT_COMPILE_COMMANDS "Exports compile commands (if available)" ${THREADPOOL_IS_ROOT})
 
 if (THREADPOOL_IS_ROOT)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -102,8 +101,8 @@ if (THREADPOOL_CLANG_FORMAT_CHECK OR THREADPOOL_CLANG_FORMAT_FIX)
 endif()
 
 set(THREADPOOL_CLANG_FORMAT_COMMAND
-    ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-clang-format.py)
-set(THREADPOOL_CLANG_FORMAT_SOURCES
+    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-clang-format.py")
+set(THREADPOOL_LINT_PATHS
     "${CMAKE_CURRENT_SOURCE_DIR}/examples"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests"
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -112,10 +111,17 @@ set(THREADPOOL_CLANG_FORMAT_SOURCES
 
 if (THREADPOOL_CLANG_FORMAT_CHECK)
     add_custom_target(threadpool_clang_format_check
-            COMMAND ${THREADPOOL_CLANG_FORMAT_COMMAND} -r ${THREADPOOL_CLANG_FORMAT_SOURCES})
+            COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "${THREADPOOL_LINT_PATHS}")
 endif()
 
 if (THREADPOOL_CLANG_FORMAT_FIX)
     add_custom_target(threadpool_clang_format_fix
-        COMMAND ${THREADPOOL_CLANG_FORMAT_COMMAND} -r -i ${THREADPOOL_CLANG_FORMAT_SOURCES})
+        COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "-i" "${THREADPOOL_LINT_PATHS}")
+endif()
+
+if (THREADPOOL_CPPCHECK)
+    include(CPPCheck)
+    cppcheck_sources(threadpool_cppcheck
+        "${THREADPOOL_LINT_PATHS}"
+    )
 endif()
