@@ -7,6 +7,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CheckIsRoot)
 check_project_is_root(THREADPOOL_IS_ROOT)
 
+option(THREADPOOL_CI "We are running on CI. May change certain defaults." OFF)
+
 option(THREADPOOL_EXAMPLES "Build the threadpool examples" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_TESTS "Build the threadpool tests" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_BENCHMARKS "Build the threadpool benchmarks" ${THREADPOOL_IS_ROOT})

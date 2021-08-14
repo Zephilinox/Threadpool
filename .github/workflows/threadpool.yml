@@ -192,6 +192,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -DTHREADPOOL_CI=ON \
             -DTHREADPOOL_ASAN=${{ matrix.config.asan }} \
             -DTHREADPOOL_LSAN=${{ matrix.config.lsan }} \
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
@@ -213,6 +214,7 @@ jobs:
             -B build \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -DTHREADPOOL_CI=ON \
             -DTHREADPOOL_ASAN=${{ matrix.config.asan }} \
             -DTHREADPOOL_LSAN=${{ matrix.config.lsan }} \
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
@@ -339,6 +341,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCPM_SOURCE_CACHE=.cpmcache/ \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DTHREADPOOL_CI=ON \
             -DTHREADPOOL_CPPCHECK=ON \
             -G "Ninja"
 
