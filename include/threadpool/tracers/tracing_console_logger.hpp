@@ -12,6 +12,7 @@
 #include <string>
 #include <iomanip>
 #include <chrono>
+#include <ctime>
 
 namespace zx
 {
@@ -68,8 +69,15 @@ public:
         std::time_t time = std::chrono::system_clock::to_time_t(now);
         auto ms = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()) - std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
 
+        std::tm timeinfo;
+#ifdef _MSC_VER
+        localtime_s(&timeinfo, &time);
+#else
+        localtime_r(&time, &timeinfo);
+#endif
+
         std::cout
-            << " " << std::put_time(std::localtime(&time), "%H:%M:%S.") << std::setfill('0') << std::setw(6) << ms.count() << " "
+            << " " << std::put_time(&timeinfo, "%H:%M:%S.") << std::setfill('0') << std::setw(6) << ms.count() << " "
             << " " << std::setfill('0') << std::setw(4) << get_thread_id() << " "
             << " " << pool << " "
             << log_level_to_string(level)
