@@ -10,13 +10,13 @@ auto main(int argc, char** argv) -> int
 {
     doctest::Context context;
     context.applyCommandLine(argc, argv);
-    context.setOption("no-breaks", true);
-    context.setOption("--version", true);
-    context.setOption("--count", true);
-    context.setOption("--list-test-cases", true);
-    context.setOption("--list-test-suites", true);
-    context.setOption("--success", false);
-    context.setOption("--exit", true);
+    context.setOption("no-breaks", static_cast<int>(true));
+    context.setOption("--version", static_cast<int>(true));
+    context.setOption("--count", static_cast<int>(true));
+    context.setOption("--list-test-cases", static_cast<int>(true));
+    context.setOption("--list-test-suites", static_cast<int>(true));
+    context.setOption("--success", static_cast<int>(false));
+    context.setOption("--exit", static_cast<int>(true));
 
     const int result = context.run();
     if (context.shouldExit())

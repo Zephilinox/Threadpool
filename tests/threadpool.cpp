@@ -13,17 +13,23 @@
 struct ExpensiveType
 {
     ExpensiveType() = default;
+
     ExpensiveType(const ExpensiveType&)
     {
         CHECK(false);
         copy_count++;
     }
+
     ExpensiveType& operator=(const ExpensiveType&)
     {
         CHECK(false);
         copy_count++;
         return *this;
     }
+
+    ExpensiveType(ExpensiveType&&) = default;
+    ExpensiveType& operator=(ExpensiveType&&) = default;
+    ~ExpensiveType() = default;
 
     int copy_count = 0;
 };
@@ -32,7 +38,7 @@ struct NormalFunctor
 {
     NormalFunctor() = default;
 
-    int operator()()
+    int operator()() const
     {
         CHECK_EQ(five, 5);
         return five;
@@ -132,7 +138,7 @@ struct CounterFunctor
 
     CounterFunctor(CounterFunctor&& rhs) noexcept
         : name(std::move(rhs.name))
-        , state(std::move(rhs.state))
+        , state(rhs.state)
     {
         state->move_constructor++;
         //std::cout << name << "move construct CounterFunctor\n";
@@ -140,6 +146,9 @@ struct CounterFunctor
 
     CounterFunctor& operator=(const CounterFunctor& rhs)
     {
+        if (this == &rhs)
+            return *this;
+
         name = rhs.name;
         state = rhs.state;
         state->copy_assign++;
@@ -147,38 +156,38 @@ struct CounterFunctor
         return *this;
     }
 
-    CounterFunctor& operator==(CounterFunctor&& rhs) noexcept
+    CounterFunctor& operator=(CounterFunctor&& rhs) noexcept
     {
         name = std::move(rhs.name);
-        state = std::move(rhs.state);
+        state = rhs.state;
         state->move_assign++;
         //std::cout << name << "move assign CounterFunctor\n";
         return *this;
     }
 
     template <typename T2>
-    void operator()(T2&& t2) &
+    void operator()(T2&&) &
     {
         //std::cout << name << "called CounterFunctor&\n";
         state->lvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&& t2) &&
+    void operator()(T2&&) &&
     {
         //std::cout << name << "called CounterFunctor&& \n";
         state->rvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&& t2) const&
+    void operator()(T2&&) const&
     {
         //std::cout << name << "called const CounterFunctor&\n";
         state->const_lvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&& t2) const&&
+    void operator()(T2&&) const&&
     {
         //std::cout << name << "called const CounterFunctor&\n";
         state->const_rvalue_call++;
@@ -357,7 +366,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     TEST_CASE("Lambdas can have unique_ptr&& arguments")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             pool.push_task([](std::unique_ptr<int>&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -368,13 +377,13 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 3);
         };
 
-        test(true);
+        test();
     }
 
     TEST_CASE("Lambdas can have auto unique_ptr arguments")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             pool.push_task([](auto five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -385,13 +394,13 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 3);
         };
 
-        test(true);
+        test();
     }
 
     TEST_CASE("Lambdas can have auto&& unique_ptr arguments")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             pool.push_task([](auto&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -402,13 +411,13 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 3);
         };
 
-        test(true);
+        test();
     }
 
     TEST_CASE("Function2 Lambdas can have unique_ptr captures")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             auto five = std::make_unique<int>(5);
@@ -422,13 +431,13 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 3);
         };
 
-        test(true);
+        test();
     }
 
     TEST_CASE("Function2 Lambdas can move unique_ptr captures")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             auto five = std::make_unique<int>(5);
@@ -440,7 +449,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 2);
         };
 
-        test(true);
+        test();
     }
 
     TEST_CASE("Function2 MoveOnlyFunctor is valid")
@@ -492,7 +501,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     TEST_CASE("NormalFunctorMoveOnlyParam for std::unique_ptr is valid")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
-        auto test = [](bool is_task) {
+        auto test = []() {
             threadpool_function2<> pool(1);
 
             NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
@@ -505,6 +514,6 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(pool.work_executed_total(), 2);
         };
 
-        test(true);
+        test();
     }
 }
