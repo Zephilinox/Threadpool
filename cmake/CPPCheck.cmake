@@ -29,9 +29,17 @@ function(cppcheck_sources target_name sources)
 
     add_custom_target("${target_name}"
         COMMAND
-            "${Python3_EXECUTABLE}" "${FILTER_COMPILE_COMMANDS_SCRIPT}" "${CMAKE_BINARY_DIR}/compile_commands.json" "${CMAKE_BINARY_DIR}/compile_commands_filtered.json" "_deps"
+            "${Python3_EXECUTABLE}"
+            "${FILTER_COMPILE_COMMANDS_SCRIPT}"
+            "${CMAKE_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_BINARY_DIR}/compile_commands_filtered.json"
+            "_deps"
         COMMAND
-            "${Python3_EXECUTABLE}" "${FILTER_COMPILE_COMMANDS_SCRIPT}" "${CMAKE_BINARY_DIR}/compile_commands_filtered.json" "${CMAKE_BINARY_DIR}/compile_commands_filtered.json" ".cpmcache"
+            "${Python3_EXECUTABLE}"
+            "${FILTER_COMPILE_COMMANDS_SCRIPT}"
+            "${CMAKE_BINARY_DIR}/compile_commands_filtered.json"
+            "${CMAKE_BINARY_DIR}/compile_commands_filtered.json"
+            ".cpmcache"
         COMMAND
             "${CMAKE_COMMAND}" "-E" "make_directory" "${CPPCHECK_DIR}"
         COMMAND

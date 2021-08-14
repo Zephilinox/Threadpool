@@ -108,7 +108,7 @@ struct CounterState
 
 struct CounterFunctor
 {
-    CounterFunctor(std::string n, CounterState* state)
+    CounterFunctor(const std::string& n, CounterState* state)
         : name(n + " ")
         , state(state)
     {
@@ -123,17 +123,17 @@ struct CounterFunctor
     }
 
     CounterFunctor(const CounterFunctor& rhs)
+        : name(rhs.name)
+        , state(rhs.state)
     {
-        name = rhs.name;
-        state = rhs.state;
         state->copy_constructor++;
         //std::cout << name << "copy construct CounterFunctor\n";
     }
 
     CounterFunctor(CounterFunctor&& rhs) noexcept
+        : name(std::move(rhs.name))
+        , state(std::move(rhs.state))
     {
-        name = rhs.name;
-        state = rhs.state;
         state->move_constructor++;
         //std::cout << name << "move construct CounterFunctor\n";
     }
@@ -149,8 +149,8 @@ struct CounterFunctor
 
     CounterFunctor& operator==(CounterFunctor&& rhs) noexcept
     {
-        name = rhs.name;
-        state = rhs.state;
+        name = std::move(rhs.name);
+        state = std::move(rhs.state);
         state->move_assign++;
         //std::cout << name << "move assign CounterFunctor\n";
         return *this;
@@ -206,11 +206,13 @@ void push_job_or_task_and_wait(bool is_task, Threadpool& pool, Work&& work, Work
 
     if constexpr (Threadpool::policy_new_work_v == zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
+        // cppcheck-suppress redundantInitialization
         auto optional_future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
         (*optional_future).wait();
     }
     else
     {
+        // cppcheck-suppress redundantInitialization
         auto future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
         future.wait();
     }

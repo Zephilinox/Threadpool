@@ -414,7 +414,7 @@ unsigned int threadpool<A, B, Tracer, D>::work_executed_total() const
     // represents at minimum the total work executed at the time of function call
     // unlikely to represent total work executed at time of function call ending
     unsigned int total = 0;
-    for (auto& thread_total : m_total_work_executed)
+    for (auto& thread_total : m_total_work_executed) // cppcheck-suppress useStlAlgorithm
         total += thread_total;
 
     return total;
