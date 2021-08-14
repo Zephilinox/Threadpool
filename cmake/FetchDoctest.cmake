@@ -1,3 +1,5 @@
+include(SetSystemIncludes)
+
 CPMAddPackage(
     NAME doctest
     GITHUB_REPOSITORY onqtam/doctest
@@ -11,3 +13,4 @@ file(GLOB_RECURSE doctest_SOURCES CONFIGURE_DEPENDS ${doctest_SOURCE_DIR}/*.hpp 
 
 source_group(TREE ${doctest_SOURCE_DIR} FILES ${doctest_SOURCES})
 set_target_properties(doctest PROPERTIES FOLDER dependencies)
+set_target_includes_as_system(doctest)

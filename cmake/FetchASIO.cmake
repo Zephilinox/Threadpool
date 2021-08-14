@@ -1,3 +1,5 @@
+include(SetSystemIncludes)
+
 CPMAddPackage(
     NAME asio
     GITHUB_REPOSITORY chriskohlhoff/asio
@@ -18,3 +20,4 @@ endif ()
 
 source_group(TREE ${asio_SOURCE_DIR} FILES ${asio_SOURCES})
 set_target_properties(asio PROPERTIES FOLDER dependencies)
+set_target_includes_as_system(asio)
