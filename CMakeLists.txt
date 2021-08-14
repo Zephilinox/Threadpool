@@ -17,6 +17,7 @@ option(THREADPOOL_DOWNLOAD_CPM "Download CPM. Disable if you're providing your o
 option(THREADPOOL_CLANG_FORMAT_CHECK "Adds the threadpool_clang_format_check target" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_CLANG_FORMAT_FIX "Adds the threadpool_clang_format_fix target" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_CPPCHECK "Adds the threadpool_cppcheck target" OFF)
+option(THREADPOOL_CLANG_TIDY_CHECK "Adds the threadpool_clang_tidy_check target" OFF)
 option(THREADPOOL_ASAN "Build with ASAN" OFF)
 option(THREADPOOL_LSAN "Build with LSAN" OFF)
 option(THREADPOOL_TSAN "Build with TSAN" OFF)
@@ -127,4 +128,9 @@ if (THREADPOOL_CPPCHECK)
     cppcheck_sources(threadpool_cppcheck
         "${THREADPOOL_LINT_PATHS}"
     )
+endif()
+
+if (THREADPOOL_CLANG_TIDY_CHECK)
+    include(ClangTidy)
+    create_clang_tidy_check(threadpool_clang_tidy_check)
 endif()

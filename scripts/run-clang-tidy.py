@@ -234,9 +234,15 @@ def main():
                       'command line.')
   parser.add_argument('-quiet', action='store_true',
                       help='Run clang-tidy in quiet mode')
+  # zx: added db as argument to provide a filtered compile commands json
+  parser.add_argument('-db', dest='db_path',
+                      help='Name of the compile command database.')
   args = parser.parse_args()
 
+  # zx: added db_path as argument to provide a filtered compile commands json
   db_path = 'compile_commands.json'
+  if args.db_path is not None:
+      db_path = args.db_path
 
   if args.build_path is not None:
     build_path = args.build_path

@@ -313,6 +313,43 @@ jobs:
           clangFormatVersion: 9
           inplace: false
 
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies on ubuntu
+        run: |
+          sudo apt-get install ninja-build
+          sudo apt-get install clang-tidy
+          ninja --version
+          cmake --version
+          gcc --version
+          clang --version
+          clang-tidy --version
+
+      - name: Configure
+        shell: bash
+        run: |
+          mkdir build
+          mkdir instdir
+          cmake \
+            -S . \
+            -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCPM_SOURCE_CACHE=.cpmcache/ \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DTHREADPOOL_CI=ON \
+            -DTHREADPOOL_CLANG_TIDY_CHECK=ON \
+            -G "Ninja"
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --target threadpool_clang_tidy_check
+
   cppcheck:
     name: cppcheck
     runs-on: ubuntu-latest
@@ -329,6 +366,7 @@ jobs:
           cmake --version
           gcc --version
           clang --version
+          cppcheck --version
 
       - name: Configure
         shell: bash
