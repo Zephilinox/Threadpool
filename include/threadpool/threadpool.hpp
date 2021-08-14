@@ -634,7 +634,7 @@ auto threadpool<A, B, Tracer, D>::make_job(F&& func, Args&&... args) -> std::sha
     auto job = std::make_shared<std::packaged_task<std::invoke_result_t<F, Args...>()>>(std::move(task));
 
     THREADPOOL_INTERNAL_TRACE(on_make_job_done);
-    return std::move(job);
+    return job;
 }
 
 template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename Tracer, typename D>
@@ -663,7 +663,7 @@ auto threadpool<A, B, Tracer, D>::make_task(F&& func, Args&&... args)
         };
 
         THREADPOOL_INTERNAL_TRACE(on_make_task_done);
-        return std::move(task);
+        return task;
     }
 }
 
