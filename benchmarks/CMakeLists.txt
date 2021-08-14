@@ -1,6 +1,7 @@
 include(FetchGoogleBenchmark)
 include(FetchASIO)
 include(ConfigureTarget)
+include(CompilerWarnings)
 
 add_executable(threadpool_benchmarks "main.cpp"
     "empty_task.hpp"
@@ -10,6 +11,7 @@ add_executable(threadpool_benchmarks "main.cpp"
 )
 
 configure_target(threadpool_benchmarks ${THREADPOOL_CODE_COVERAGE})
+set_target_warnings(threadpool_benchmarks ${THREADPOOL_WARNINGS_AS_ERRORS})
 
 target_link_libraries(threadpool_benchmarks
     PRIVATE

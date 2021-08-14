@@ -22,6 +22,7 @@ option(THREADPOOL_LSAN "Build with LSAN" OFF)
 option(THREADPOOL_TSAN "Build with TSAN" OFF)
 option(THREADPOOL_UBSAN "Build with UBSAN" OFF)
 option(THREADPOOL_CODE_COVERAGE "Enable code coverage" OFF)
+option(THREADPOOL_WARNINGS_AS_ERRORS "Treat warnings as errors" ${THREADPOOL_CI})
 
 if (THREADPOOL_IS_ROOT)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
