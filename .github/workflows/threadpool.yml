@@ -115,6 +115,16 @@ jobs:
             code_coverage: "OFF",
           }
         - {
+            name: "windows-clang-ninja",
+            os: windows-latest,
+            build_type: "Release",
+            cc: "clang",
+            cxx: "clang",
+            generators: "Ninja",
+            ccache: "OFF",
+            code_coverage: "OFF",
+          }
+        - {
             name: "macos-clang",
             os: macos-latest,
             build_type: "Release",
@@ -148,10 +158,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cpm-
 
+      - name: Add clang path to $PATH env on Windows
+        shell: bash
+        if: matrix.config.name == 'windows-clang-ninja'
+        run: |
+          echo $GITHUB_ENV
+          echo "1"
+          echo $PATH
+          echo "2"
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
+          echo "3"
+          echo $GITHUB_ENV
+          echo "4"
+          echo $PATH
+          echo "5"
+
+      - uses: seanmiddleditch/gha-setup-ninja@master
+
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
         run: |
-          choco install ninja
           ninja --version
           cmake --version
 
