@@ -251,12 +251,12 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(argument.destructor, expected_moves + 1); //note: reductions are good, but wanna know when they happen
         };
 
-        test(true, 6);
+        test(false, 4);
 //yeah...
 #if defined(__unix__) || defined(__APPLE__)
-        test(false, 4); //megatodo: why is this megaless?
+        test(true, 6);
 #else
-        test(false, 5); //todo: why is this less?
+        test(true, 5); //todo: why is this less?
 #endif
     }
 
