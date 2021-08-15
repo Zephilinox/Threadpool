@@ -24,6 +24,17 @@ jobs:
             code_coverage: "OFF",
           }
         - {
+            name: "ubuntu-clang-valgrind",
+            os: ubuntu-latest,
+            build_type: "Debug",
+            cc: "clang",
+            cxx: "clang++",
+            generators: "Ninja",
+            ccache: "ON",
+            code_coverage: "OFF",
+            valgrind: "ON",
+          }
+        - {
             name: "ubuntu-gcc",
             os: ubuntu-latest,
             build_type: "Release",
@@ -216,6 +227,7 @@ jobs:
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
             -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
+            -DTHREADPOOL_VALGRIND=${{ matrix.config.valgrind }} \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G "${{ matrix.config.generators }}"
 
@@ -238,6 +250,7 @@ jobs:
             -DTHREADPOOL_TSAN=${{ matrix.config.tsan }} \
             -DTHREADPOOL_UBSAN=${{ matrix.config.ubsan }} \
             -DTHREADPOOL_CODE_COVERAGE=${{ matrix.config.code_coverage }} \
+            -DTHREADPOOL_VALGRIND=${{ matrix.config.valgrind }} \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G "${{ matrix.config.generators }}"
 
@@ -253,10 +266,12 @@ jobs:
         shell: bash
         working-directory: build
         run: ctest --C ${{ matrix.config.build_type }} --output-on-failure --no-tests=error
+        if: always()
 
       - name: Benchmarks
         shell: bash
         run: cmake --build build --config ${{ matrix.config.build_type }} --target threadpool_benchmarks_execute
+        if: always()
 
       - name: Pack
         shell: bash
