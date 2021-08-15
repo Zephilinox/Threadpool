@@ -597,11 +597,11 @@ auto threadpool<A, B, Tracer, D>::make_worker(unsigned int thread_id)
             auto job = std::move(m_pending_work.front());
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_grab_work_done<type>, thread_id);
             m_pending_work.pop();
+            ++m_work_executing;
             --m_pending_work_to_process;
             // lock after modifying m_pending_work_to_process to keep it in sync with the real queue
             work_lock.unlock();
 
-            ++m_work_executing;
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_executing_start<type>, thread_id);
             //if the work is a future and someone blocks on it then
             // between the future becoming ready and someone checking the total work
