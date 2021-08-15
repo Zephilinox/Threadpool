@@ -262,9 +262,14 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(argument.destructor, expected_moves + 1); //note: reductions are good, but wanna know when they happen
         };
 
-        test(false, 4);
 //yeah...
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(_WIN32) && defined(__clang__)
+        test(false, 5);
+#else
+        test(false, 4);
+#endif
+
+#if defined(__unix__) || defined(__APPLE__) || defined(__clang__)
         test(true, 6);
 #else
         test(true, 5); //todo: why is this less?

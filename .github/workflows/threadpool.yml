@@ -162,18 +162,10 @@ jobs:
         shell: bash
         if: matrix.config.name == 'windows-clang-ninja'
         run: |
-          echo $GITHUB_ENV
-          echo "1"
-          echo $PATH
-          echo "2"
           echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
-          echo "3"
-          echo $GITHUB_ENV
-          echo "4"
-          echo $PATH
-          echo "5"
 
       - uses: seanmiddleditch/gha-setup-ninja@master
+        if: startsWith(matrix.config.os, 'windows')
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
