@@ -8,6 +8,9 @@ include(CheckIsRoot)
 check_project_is_root(THREADPOOL_IS_ROOT)
 
 option(THREADPOOL_CI "We are running on CI. May change certain defaults." OFF)
+if (THREADPOOL_CI)
+    message(STATUS "Threadpool running on CI")
+endif()
 
 option(THREADPOOL_EXAMPLES "Build the threadpool examples" ${THREADPOOL_IS_ROOT})
 option(THREADPOOL_TESTS "Build the threadpool tests" ${THREADPOOL_IS_ROOT})
@@ -27,30 +30,37 @@ option(THREADPOOL_WARNINGS_AS_ERRORS "Treat warnings as errors" ${THREADPOOL_CI}
 option(THREADPOOL_VALGRIND "Use valgrind to run all executables" OFF)
 
 if (THREADPOOL_IS_ROOT)
+    message(STATUS "Threadpool is root")
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
 if (THREADPOOL_DOWNLOAD_CPM)
+    message(STATUS "Threadpool CPM Download Enabled")
     include(DownloadCPM)
 endif()
 
 if (THREADPOOL_ASAN)
+    message(STATUS "Threadpool ASAN Enabled")
     include(SanitizeAddress)
 endif()
 
 if (THREADPOOL_LSAN)
+    message(STATUS "Threadpool LSAN Enabled")
     include(SanitizeLeaks)
 endif()
 
 if (THREADPOOL_TSAN)
+    message(STATUS "Threadpool TSAN Enabled")
     include(SanitizeThreads)
 endif()
 
 if (THREADPOOL_UBSAN)
+    message(STATUS "Threadpool UBSAN Enabled")
     include(SanitizeUndefinedBehaviour)
 endif()
 
 if (THREADPOOL_VALGRND)
+    message(STATUS "Threadpool Valgrind Enabled")
     include(Valgrind)
 endif()
 
@@ -74,6 +84,7 @@ include(ConfigureTarget)
 configure_target(threadpool OFF)
 
 if (THREADPOOL_INSTALL)
+    message(STATUS "Threadpool Install Enabled")
     install(
         DIRECTORY "${threadpool_SOURCE_DIR}/include"
         DESTINATION "."
@@ -100,17 +111,18 @@ endif()
 if (THREADPOOL_CLANG_FORMAT_CHECK OR THREADPOOL_CLANG_FORMAT_FIX)
     find_program(CLANG_FORMAT clang-format)
     if (NOT CLANG_FORMAT)
-        message(ERROR "Failed to find clang-format")
+        message(SEND_ERROR "Failed to find clang-format")
     endif()
 
     find_package(Python3)
     if (NOT Python3_FOUND)
-        message(ERROR "Failed to find python3")
+        message(SEND_ERROR "Failed to find python3")
     endif()
 endif()
 
 set(THREADPOOL_CLANG_FORMAT_COMMAND
-    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-clang-format.py")
+    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-clang-format.py"
+)
 set(THREADPOOL_LINT_PATHS
     "${CMAKE_CURRENT_SOURCE_DIR}/examples"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests"
@@ -119,16 +131,19 @@ set(THREADPOOL_LINT_PATHS
 )
 
 if (THREADPOOL_CLANG_FORMAT_CHECK)
+    message(STATUS "Threadpool clang-format check Enabled")
     add_custom_target(threadpool_clang_format_check
-            COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "${THREADPOOL_LINT_PATHS}")
+        COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "${THREADPOOL_LINT_PATHS}")
 endif()
 
 if (THREADPOOL_CLANG_FORMAT_FIX)
+    message(STATUS "Threadpool clang-format fix Enabled")
     add_custom_target(threadpool_clang_format_fix
         COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "-i" "${THREADPOOL_LINT_PATHS}")
 endif()
 
 if (THREADPOOL_CPPCHECK)
+    message(STATUS "Threadpool cppcheck Enabled")
     include(CPPCheck)
     cppcheck_sources(threadpool_cppcheck
         "${THREADPOOL_LINT_PATHS}"
@@ -136,6 +151,7 @@ if (THREADPOOL_CPPCHECK)
 endif()
 
 if (THREADPOOL_CLANG_TIDY_CHECK)
+    message(STATUS "Threadpool clang-tidy check Enabled")
     include(ClangTidy)
     create_clang_tidy_check(threadpool_clang_tidy_check)
 endif()
