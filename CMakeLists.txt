@@ -5,6 +5,7 @@ project(threadpool)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CheckIsRoot)
+
 check_project_is_root(THREADPOOL_IS_ROOT)
 
 option(THREADPOOL_CI "We are running on CI. May change certain defaults." OFF)
@@ -91,7 +92,6 @@ if (THREADPOOL_INSTALL)
     )
 endif()
 
-
 if (THREADPOOL_EXAMPLES)
     message(STATUS "Threadpool Examples Enabled")
     add_subdirectory(examples)
@@ -108,21 +108,6 @@ if (THREADPOOL_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
 
-if (THREADPOOL_CLANG_FORMAT_CHECK OR THREADPOOL_CLANG_FORMAT_FIX)
-    find_program(CLANG_FORMAT clang-format)
-    if (NOT CLANG_FORMAT)
-        message(SEND_ERROR "Failed to find clang-format")
-    endif()
-
-    find_package(Python3)
-    if (NOT Python3_FOUND)
-        message(SEND_ERROR "Failed to find python3")
-    endif()
-endif()
-
-set(THREADPOOL_CLANG_FORMAT_COMMAND
-    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-clang-format.py"
-)
 set(THREADPOOL_LINT_PATHS
     "${CMAKE_CURRENT_SOURCE_DIR}/examples"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests"
@@ -132,14 +117,20 @@ set(THREADPOOL_LINT_PATHS
 
 if (THREADPOOL_CLANG_FORMAT_CHECK)
     message(STATUS "Threadpool clang-format check Enabled")
-    add_custom_target(threadpool_clang_format_check
-        COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "${THREADPOOL_LINT_PATHS}")
+    include(ClangFormat)
+    create_clang_format_check(
+        "threadpool_clang_format_check"
+        "${THREADPOOL_LINT_PATHS}"
+    )
 endif()
 
 if (THREADPOOL_CLANG_FORMAT_FIX)
     message(STATUS "Threadpool clang-format fix Enabled")
-    add_custom_target(threadpool_clang_format_fix
-        COMMAND "${THREADPOOL_CLANG_FORMAT_COMMAND}" "-r" "-i" "${THREADPOOL_LINT_PATHS}")
+    include(ClangFormat)
+    create_clang_format_fix(
+        "threadpool_clang_format_fix"
+        "${THREADPOOL_LINT_PATHS}"
+    )
 endif()
 
 if (THREADPOOL_CPPCHECK)
