@@ -89,6 +89,6 @@ template <
     zx::threadpool_policy_pending_work pending_work_policy = zx::threadpool_policy_pending_work::wait_for_work_to_finish,
     zx::threadpool_policy_new_work new_work_policy = zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping,
     template <typename Logger> typename Tracer = zx::threadpool_tracing_logger>
-using threadpool_console_logging = zx::threadpool<pending_work_policy, new_work_policy, Tracer<zx::threadpool_console_logger<>>>;
+using threadpool_console_logging = zx::threadpool<pending_work_policy, new_work_policy, Tracer<zx::threadpool_console_logger>>;
 
 } // namespace zx

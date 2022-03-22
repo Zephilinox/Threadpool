@@ -358,7 +358,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Lambdas can have unique_ptr arguments")
     {
-        threadpool_function2<> pool(1);
+        threadpool_function2 pool(1);
 
         pool.push_task([](std::unique_ptr<int> five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
         pool.push_task([](std::unique_ptr<int> five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -372,7 +372,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             pool.push_task([](std::unique_ptr<int>&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
             pool.push_task([](std::unique_ptr<int>&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -389,7 +389,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             pool.push_task([](auto five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
             pool.push_task([](auto five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -406,7 +406,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             pool.push_task([](auto&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
             pool.push_task([](auto&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
@@ -423,7 +423,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             auto five = std::make_unique<int>(5);
             pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return *five; });
@@ -443,7 +443,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             auto five = std::make_unique<int>(5);
             pool.push_task([five = std::move(five)]() mutable { CHECK_EQ(*five, 5); return std::move(five); });
@@ -459,7 +459,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Function2 MoveOnlyFunctor is valid")
     {
-        threadpool_function2<> pool(1);
+        threadpool_function2 pool(1);
 
         MoveOnlyFunctor mof;
         pool.push_task(std::move(mof));
@@ -507,7 +507,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
-            threadpool_function2<> pool(1);
+            threadpool_function2 pool(1);
 
             NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
             pool.push_task(nfmop, std::make_unique<int>(5));
