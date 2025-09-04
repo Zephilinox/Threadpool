@@ -1,6 +1,6 @@
 #pragma once
 
-//STD
+// STD
 #include <cstddef>
 
 namespace zx

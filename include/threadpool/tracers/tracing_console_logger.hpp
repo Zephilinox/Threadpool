@@ -1,12 +1,12 @@
 #pragma once
 
-//SELF
+// SELF
 
-//LIBS
+// LIBS
 #include <threadpool/threadpool.hpp>
 #include <threadpool/tracers/tracing_logger.hpp>
 
-//STD
+// STD
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -21,7 +21,7 @@ template <unsigned int MaxLogLevel = 3>
 class threadpool_console_logger
 {
 public:
-    enum class LogLevel
+    enum class LogLevel : std::uint8_t
     {
         none = 0,
         critical = 1,
@@ -69,7 +69,7 @@ public:
         std::time_t time = std::chrono::system_clock::to_time_t(now);
         auto ms = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()) - std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
 
-        std::tm timeinfo;
+        std::tm timeinfo{};
 #ifdef _MSC_VER
         localtime_s(&timeinfo, &time);
 #else

@@ -3,12 +3,15 @@
 // LIBS
 #include <doctest/doctest.h>
 #include <threadpool/threadpool.hpp>
-#include <threadpool/tracers/tracing_console_logger.hpp>
+// #include <threadpool/tracers/tracing_console_logger.hpp>
 #include <function2/function2.hpp>
 
 // STD
 #include <memory>
-#include <iostream>
+#include <atomic>
+#include <utility>
+#include <string>
+#include <functional>
 
 // it doesn't know how to nicely print std::atomic
 // so let's help it
@@ -23,30 +26,6 @@ struct StringMaker<std::atomic<T>>
     }
 };
 } // namespace doctest
-
-struct ExpensiveType
-{
-    ExpensiveType() = default;
-
-    ExpensiveType(const ExpensiveType&)
-    {
-        CHECK(false);
-        copy_count++;
-    }
-
-    ExpensiveType& operator=(const ExpensiveType&)
-    {
-        CHECK(false);
-        copy_count++;
-        return *this;
-    }
-
-    ExpensiveType(ExpensiveType&&) = default;
-    ExpensiveType& operator=(ExpensiveType&&) = default;
-    ~ExpensiveType() = default;
-
-    int copy_count = 0;
-};
 
 struct NormalFunctor
 {
@@ -217,6 +196,9 @@ template <
     typename C = void>
 using threadpool_function2 = zx::threadpool<A, B, void, fu2::unique_function<void()>>;
 
+namespace
+{
+
 template <typename Threadpool, typename Work, typename... WorkArgs>
 void push_job_or_task_and_wait(bool is_task, Threadpool& pool, Work&& work, WorkArgs&&... work_args)
 {
@@ -229,17 +211,17 @@ void push_job_or_task_and_wait(bool is_task, Threadpool& pool, Work&& work, Work
 
     if constexpr (Threadpool::policy_new_work_v == zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
-        // cppcheck-suppress redundantInitialization
         auto optional_future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
         (*optional_future).wait();
     }
     else
     {
-        // cppcheck-suppress redundantInitialization
         auto future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
         future.wait();
     }
 }
+
+}; // namespace
 
 TEST_SUITE("Pushing Tasks & Jobs")
 {
@@ -322,7 +304,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     {
         auto test = [](bool is_task) {
             zx::threadpool pool(1);
-            int five = 5;
+            const int five = 5;
             push_job_or_task_and_wait(is_task, pool, [five]() mutable { CHECK_EQ(five, 5); return five; });
             push_job_or_task_and_wait(is_task, pool, [five]() mutable noexcept { CHECK_EQ(five, 5); return five; });
             push_job_or_task_and_wait(
@@ -378,9 +360,9 @@ TEST_SUITE("Pushing Tasks & Jobs")
         auto test = []() {
             threadpool_function2<> pool(1);
 
-            pool.push_task([](std::unique_ptr<int>&& five) mutable { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-            pool.push_task([](std::unique_ptr<int>&& five) mutable noexcept { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
-            pool.push_task([](std::unique_ptr<int>&& five) { CHECK_EQ(*five, 5); return *five; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) mutable { auto f = std::move(five); CHECK_EQ(*f, 5); return *f; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) mutable noexcept { auto f = std::move(five); CHECK_EQ(*f, 5); return *f; }, std::make_unique<int>(5));
+            pool.push_task([](std::unique_ptr<int>&& five) { auto f = std::move(five); CHECK_EQ(*f, 5); return *f; }, std::make_unique<int>(5));
 
             pool.wait_all();
             CHECK_EQ(pool.work_executed_total(), 3);

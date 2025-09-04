@@ -1,14 +1,14 @@
 #pragma once
 
-//SELF
+// SELF
 #include "empty_task.hpp"
 
-//LIBS
+// LIBS
 #include <benchmark/benchmark.h>
 #include <threadpool/threadpool.hpp>
 #include <asio.hpp>
 
-//STD
+// STD
 #include <iostream>
 
 using work_guard_type = asio::executor_work_guard<asio::io_context::executor_type>;
@@ -20,11 +20,12 @@ static auto benchmark_asio_empty_task_push(benchmark::State& state) -> void
 
     std::vector<std::thread> producers;
     std::atomic<bool> stop = false;
-    ;
+
+    producers.reserve(state.range(0));
     for (int i = 0; i < state.range(0); ++i)
     {
         producers.emplace_back([&]() {
-            while (!stop) //kinda hacky, but close enough
+            while (!stop) // kinda hacky, but close enough
                 producer_context.run();
         });
     }
@@ -44,14 +45,14 @@ static auto benchmark_asio_empty_task_push(benchmark::State& state) -> void
             });
         }
 
-        //make sure we block until it has posted all the work to the consumer
+        // make sure we block until it has posted all the work to the consumer
         work_guard_producer.reset();
     }
 
     stop = true;
 
     producer_context.stop();
-    //let consumer exit without executing jobs
+    // let consumer exit without executing jobs
     consumer_context.stop();
 
     for (auto& thread : producers)
@@ -68,11 +69,12 @@ static auto benchmark_asio_empty_task_execute(benchmark::State& state) -> void
 
     std::vector<std::thread> threads;
     std::atomic<bool> stop = false;
-    ;
+
+    threads.reserve(state.range(0));
     for (int i = 0; i < state.range(0); ++i)
     {
         threads.emplace_back([&]() {
-            while (!stop) //kinda hacky, but close enough
+            while (!stop) // kinda hacky, but close enough
                 context.run();
         });
     }
@@ -84,7 +86,7 @@ static auto benchmark_asio_empty_task_execute(benchmark::State& state) -> void
         for (int i = 0; i < empty_task_count; ++i)
             asio::post(context, &empty_task);
 
-        //finish all work
+        // finish all work
         work_guard.reset();
     }
 

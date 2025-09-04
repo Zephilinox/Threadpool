@@ -12,8 +12,7 @@
 
 namespace zx
 {
-
-enum class threadpool_policy_pending_work
+enum class threadpool_policy_pending_work : std::uint8_t
 {
     // When the threadpool is destroyed, all pending work will be executed, and those futures will never have broken promises
     wait_for_work_to_finish,
@@ -21,7 +20,7 @@ enum class threadpool_policy_pending_work
     leave_work_unfinished,
 };
 
-enum class threadpool_policy_new_work
+enum class threadpool_policy_new_work : std::uint8_t
 {
     // When the threadpool is destroyed, no new pending work can be pushed
     // The user may toggle blocking new pending work before destruction
@@ -32,7 +31,7 @@ enum class threadpool_policy_new_work
 
 namespace detail
 {
-enum class worker_t
+enum class worker_t : std::uint8_t
 {
     // The worker type for all threads that the thread pool starts, to process pending work
     wait_until_shutdown,
@@ -240,7 +239,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
 
         THREADPOOL_INTERNAL_TRACE(on_wait_for_work_almost_pushed_start);
         // A thread may have been in the middle of adding a new job when we blocked new work, so wait for it to finish
-        while (m_work_almost_pushed)
+        while (m_work_almost_pushed > 0)
         {
             THREADPOOL_INTERNAL_TRACE(on_wait_for_work_almost_pushed_while);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -252,7 +251,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
     {
         THREADPOOL_INTERNAL_TRACE(on_wait_for_pending_work_to_end_start);
 
-        while (m_pending_work_to_process)
+        while (m_pending_work_to_process > 0)
         {
             THREADPOOL_INTERNAL_TRACE(on_wait_for_pending_work_to_end_while);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -280,7 +279,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
     THREADPOOL_INTERNAL_TRACE(on_notify_workers_to_stop_done);
 
     THREADPOOL_INTERNAL_TRACE(on_wait_for_executing_work_to_end_start);
-    while (m_work_executing)
+    while (m_work_executing > 0)
     {
         THREADPOOL_INTERNAL_TRACE(on_wait_for_executing_work_to_end_while);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -302,7 +301,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
     if constexpr (has_tracing_v)
     {
         if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
-            if (m_pending_work_to_process)
+            if (m_pending_work_to_process > 0)
                 Tracer::on_internal_error_new_work_in_queue_during_destruction(*this);
 
         Tracer::on_destructor_end(*this);
@@ -312,7 +311,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
 template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename Tracer, typename D>
 void threadpool<A, B, Tracer, D>::process_all_pending()
 {
-    if (!m_pending_work_to_process)
+    if (m_pending_work_to_process == 0)
         return;
 
     THREADPOOL_INTERNAL_TRACE(on_process_all_pending_start);
@@ -323,7 +322,7 @@ void threadpool<A, B, Tracer, D>::process_all_pending()
 template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename Tracer, typename D>
 void threadpool<A, B, Tracer, D>::process_once()
 {
-    if (!m_pending_work_to_process)
+    if (m_pending_work_to_process == 0)
         return;
 
     THREADPOOL_INTERNAL_TRACE(on_process_once_start);
@@ -336,7 +335,7 @@ void threadpool<A, B, Tracer, D>::wait_all_pending() const
 {
     THREADPOOL_INTERNAL_TRACE(on_wait_all_pending_start);
 
-    while (m_pending_work_to_process)
+    while (m_pending_work_to_process > 0)
     {
         THREADPOOL_INTERNAL_TRACE(on_wait_all_pending_while);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -353,7 +352,7 @@ void threadpool<A, B, Tracer, D>::wait_all() const
     //   however, we only really need to wait for the existing work at the time of calling the function
     //   so any new work that may come in afterwards and become pending isn't a problem
     // We could lock a mutex here and during task/job push, to ensure no new work is added, but it shouldn't be necessary
-    while (m_pending_work_to_process || m_work_executing)
+    while (m_pending_work_to_process > 0 || m_work_executing > 0)
     {
         THREADPOOL_INTERNAL_TRACE(on_wait_all_while);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -414,7 +413,7 @@ unsigned int threadpool<A, B, Tracer, D>::work_executed_total() const
     // represents at minimum the total work executed at the time of function call
     // unlikely to represent total work executed at time of function call ending
     unsigned int total = 0;
-    for (auto& thread_total : m_total_work_executed) // cppcheck-suppress useStlAlgorithm
+    for (const auto& thread_total : m_total_work_executed)
         total += thread_total;
 
     return total;
@@ -478,7 +477,7 @@ auto threadpool<A, B, Tracer, D>::push_job_new_work_allow(F&& func, Args&&... ar
     push_work(std::move(job));
 
     THREADPOOL_INTERNAL_TRACE(on_push_job_done);
-    return std::move(future);
+    return future;
 }
 
 template <threadpool_policy_pending_work A, threadpool_policy_new_work B, typename Tracer, typename D>
@@ -500,7 +499,7 @@ auto threadpool<A, B, Tracer, D>::push_job_new_work_forbid(F&& func, Args&&... a
     --m_work_almost_pushed;
 
     THREADPOOL_INTERNAL_TRACE(on_push_job_done);
-    return std::move(future);
+    return future;
 }
 
 template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_policy, typename Tracer, typename D>
@@ -681,7 +680,7 @@ void threadpool<A, B, Tracer, D>::push_work(F&& func)
         }
         else if constexpr (std::is_invocable<decltype(*work)>())
         {
-            std::move (*work)(); // Jobs
+            std::move (*std::move(work))(); // Jobs
         }
         else
         {

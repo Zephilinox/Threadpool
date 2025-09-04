@@ -1,12 +1,13 @@
 #pragma once
 
-//SELF
+// SELF
 
-//LIBS
+// LIBS
 #include <benchmark/benchmark.h>
 #include <threadpool/threadpool.hpp>
 
-//STD
+// STD
+#include <functional>
 
 static void empty_task()
 {

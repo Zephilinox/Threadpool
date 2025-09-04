@@ -1,14 +1,14 @@
 #pragma once
 
-//SELF
+// SELF
 
-//LIBS
+// LIBS
 #include <benchmark/benchmark.h>
 #include <threadpool/threadpool.hpp>
 
-//STD
+// STD
 
-constexpr auto sleepy_task_count = 1000;
+constexpr auto sleepy_task_count = 100;
 
 static void sleepy_task()
 {

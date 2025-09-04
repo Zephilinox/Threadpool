@@ -1,12 +1,12 @@
 #pragma once
 
-//SELF
+// SELF
 #include "threadpool/threadpool.hpp"
 #include "threadpool/tracers/tracing_nothing.hpp"
 
-//LIBS
+// LIBS
 
-//STD
+// STD
 #include <string>
 
 namespace zx
