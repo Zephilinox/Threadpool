@@ -1,0 +1,87 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default Config",
+            "description": "Default build configuration",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "debug-strict",
+            "displayName": "Debug with Strict Checks",
+            "description": "Debug build with warnings as errors and clang-tidy",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "THREADPOOL_WARNINGS_AS_ERRORS": "ON",
+                "THREADPOOL_CLANG_TIDY_CHECK": "ON",
+                "THREADPOOL_CPPCHECK": "ON",
+                "THREADPOOL_CLANG_FORMAT_CHECK": "ON"
+            }
+        },
+        {
+            "name": "release-strict",
+            "displayName": "Release with Strict Checks",
+            "description": "Release build with warnings as errors and clang-tidy",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "THREADPOOL_WARNINGS_AS_ERRORS": "ON",
+                "THREADPOOL_CLANG_TIDY_CHECK": "ON",
+                "THREADPOOL_CPPCHECK": "ON",
+                "THREADPOOL_CLANG_FORMAT_CHECK": "ON"
+            }
+        },
+        {
+            "name": "ci-like",
+            "displayName": "CI-like Build",
+            "description": "Build configuration similar to CI environment",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "THREADPOOL_CI": "ON",
+                "THREADPOOL_WARNINGS_AS_ERRORS": "ON",
+                "THREADPOOL_CLANG_TIDY_CHECK": "ON",
+                "THREADPOOL_CPPCHECK": "ON",
+                "THREADPOOL_CLANG_FORMAT_CHECK": "ON",
+                "THREADPOOL_TESTS": "ON",
+                "THREADPOOL_EXAMPLES": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug-strict",
+            "displayName": "Build Debug Strict",
+            "configurePreset": "debug-strict"
+        },
+        {
+            "name": "release-strict",
+            "displayName": "Build Release Strict",
+            "configurePreset": "release-strict"
+        },
+        {
+            "name": "ci-like",
+            "displayName": "Build CI-like",
+            "configurePreset": "ci-like"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "debug-strict",
+            "displayName": "Test Debug Strict",
+            "configurePreset": "debug-strict"
+        },
+        {
+            "name": "ci-like",
+            "displayName": "Test CI-like",
+            "configurePreset": "ci-like"
+        }
+    ]
+}
