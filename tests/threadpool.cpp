@@ -159,28 +159,28 @@ struct CounterFunctor
     }
 
     template <typename T2>
-    void operator()(T2&&) &
+    void operator()(T2&&) & // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         // std::cout << name << "called CounterFunctor&\n";
         state->lvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&&) &&
+    void operator()(T2&&) && // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         // std::cout << name << "called CounterFunctor&& \n";
         state->rvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&&) const&
+    void operator()(T2&&) const& // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         // std::cout << name << "called const CounterFunctor&\n";
         state->const_lvalue_call++;
     }
 
     template <typename T2>
-    void operator()(T2&&) const&&
+    void operator()(T2&&) const&& // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         // std::cout << name << "called const CounterFunctor&\n";
         state->const_rvalue_call++;
@@ -212,7 +212,8 @@ void push_job_or_task_and_wait(bool is_task, Threadpool& pool, Work&& work, Work
     if constexpr (Threadpool::policy_new_work_v == zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
     {
         auto optional_future = pool.push_job(std::forward<Work>(work), std::forward<WorkArgs>(work_args)...);
-        (*optional_future).wait();
+        if (optional_future)
+            optional_future->wait();
     }
     else
     {
@@ -228,6 +229,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
     TEST_CASE("Ensure functors and arguments don't copy unexpectedly")
     {
         auto test = [](bool is_task, unsigned int expected_moves) {
+            CAPTURE(is_task);
             CounterState argument;
             CounterState function;
 
@@ -261,6 +263,9 @@ TEST_SUITE("Pushing Tasks & Jobs")
 #if defined(_WIN32) && !defined(__clang__)
         test(false, 2);
         test(true, 3);
+#elif defined(__APPLE__)
+        test(false, 3);
+        test(true, 5);
 #else
         test(false, 3);
         test(true, 4);

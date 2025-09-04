@@ -60,7 +60,7 @@ if (THREADPOOL_UBSAN)
     include(SanitizeUndefinedBehaviour)
 endif()
 
-if (THREADPOOL_VALGRND)
+if (THREADPOOL_VALGRIND)
     message(STATUS "Threadpool Valgrind Enabled")
     include(Valgrind)
 endif()

@@ -9,6 +9,7 @@ jobs:
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -123,13 +124,13 @@ jobs:
             clang_format: "OFF",
           }
         - {
-            name: "windows-msvc-vs2019",
+            name: "windows-msvc-vs2022",
             os: windows-latest,
             build_type: "Release",
             cc: "cl",
             cxx: "cl",
-            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
-            generators: "Visual Studio 16 2019",
+            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
+            generators: "Visual Studio 17 2022",
             ccache: "OFF",
             code_coverage: "OFF",
             clang_format: "OFF",
@@ -157,23 +158,46 @@ jobs:
             clang_format: "OFF",
           }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       - name: Print env
         run: |
           echo github.event.action: ${{ github.event.action }}
           echo github.event_name: ${{ github.event_name }}
+      
+      - name: Speedup APT
+        if: startsWith(matrix.config.name, 'ubuntu')
+        run: |
+          sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null << 'EOF'
+          path-exclude /usr/share/doc/*
+          path-exclude /usr/share/man/*
+          path-exclude /usr/share/info/*
+          EOF
+          
+          sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+
+      - name: Cache APT packages
+        if: startsWith(matrix.config.name, 'ubuntu')
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/apt-packages.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
 
       - name: ccache
         if: startsWith(matrix.config.ccache, 'ON')
-        uses: hendrikmuhs/ccache-action@v1
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ matrix.os }}-${{ matrix.build_type }}
+          key: ${{ matrix.config.os }}-${{ matrix.config.build_type }}
           max-size: 500M
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          MANDB_MAP_UPDATE: 0
 
       - name: CPM Cache
         id: cache-cpm
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: .cpmcache
           key: ${{ runner.os }}-cpm-${{ hashFiles('**/') }}
@@ -184,10 +208,12 @@ jobs:
         shell: bash
         if: matrix.config.name == 'windows-clang-ninja'
         run: |
-          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
 
-      - uses: seanmiddleditch/gha-setup-ninja@master
-        if: startsWith(matrix.config.os, 'windows')
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '4.1.x'
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
@@ -213,7 +239,6 @@ jobs:
       - name: Install dependencies on macos
         if: startsWith(matrix.config.os, 'macos')
         run: |
-          brew install p7zip cmake ninja
           ninja --version
           cmake --version
 
@@ -280,7 +305,8 @@ jobs:
       - name: Tests
         shell: bash
         working-directory: build
-        run: ctest --C ${{ matrix.config.build_type }} --output-on-failure --no-tests=error
+        run: |
+          ctest -VV --timeout 60 --build-config ${{ matrix.config.build_type }} --output-on-failure --no-tests=error
         if: always()
 
       - name: Benchmarks
@@ -311,7 +337,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t ${{ secrets.CODECOV_TOKEN }} || echo "Codecov did not collect coverage reports"
 
       - name: Upload Build Developer Logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: 'z-${{ matrix.config.name }}-build_dev_logs'
           path: |
@@ -330,7 +356,7 @@ jobs:
           retention-days: 1
 
       - name: Upload
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           path: ./${{ matrix.config.name }}.7z
           name: ${{ matrix.config.name }}.7z
@@ -352,13 +378,13 @@ jobs:
     strategy:
       fail-fast: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Formatting
-        uses: DoozyX/clang-format-lint-action@v0.12
+        uses: DoozyX/clang-format-lint-action@v0.20
         with:
           exclude: 'build instdir'
-          clangFormatVersion: 9
+          clangFormatVersion: 20
           inplace: false
 
   clang-tidy:
@@ -367,7 +393,30 @@ jobs:
     strategy:
       fail-fast: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+
+      - name: Speedup APT
+        run: |
+          sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null << 'EOF'
+          path-exclude /usr/share/doc/*
+          path-exclude /usr/share/man/*
+          path-exclude /usr/share/info/*
+          EOF
+
+          sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: ${{ github.job }}-apt-${{ hashFiles('**/apt-packages.txt') }}
+          restore-keys: |
+            ${{ github.job }}-apt-
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '4.1.x'
 
       - name: Install dependencies on ubuntu
         run: |
@@ -404,8 +453,31 @@ jobs:
     strategy:
       fail-fast: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
+      - name: Speedup APT
+        run: |
+          sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null << 'EOF'
+          path-exclude /usr/share/doc/*
+          path-exclude /usr/share/man/*
+          path-exclude /usr/share/info/*
+          EOF
+          
+          sudo chown root /bin/tar && sudo chmod u+s /bin/tar
+
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: ${{ github.job }}-apt-${{ hashFiles('**/apt-packages.txt') }}
+          restore-keys: |
+            ${{ github.job }}-apt-
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '4.1.x'
+          
       - name: Install dependencies on ubuntu
         run: |
           sudo apt-get install ninja-build

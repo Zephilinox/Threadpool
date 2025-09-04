@@ -11,5 +11,14 @@ function(configure_target target use_coverage)
 
     get_target_property(target_SOURCES ${target} SOURCES)
     get_target_property(target_SOURCE_DIR ${target} SOURCE_DIR)
+    get_target_property(target_CROSSCOMPILING_EMULATOR ${target} CROSSCOMPILING_EMULATOR)
+    if (target_CROSSCOMPILING_EMULATOR)
+        message(STATUS "Configured target '${target}' has crosscompiling emulator: ${target_CROSSCOMPILING_EMULATOR}")
+    endif()
+    
+    if ((NOT target_CROSSCOMPILING_EMULATOR) AND (CMAKE_CROSSCOMPILING_EMULATOR MATCHES "valgrind"))
+        message(WARNING "Configured target '${target}' is not using valgrind: ${target_CROSSCOMPILING_EMULATOR}")
+    endif()
+
     source_group(TREE ${target_SOURCE_DIR} FILES ${target_SOURCES})
 endfunction()
