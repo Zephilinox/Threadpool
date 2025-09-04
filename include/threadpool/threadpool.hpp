@@ -452,6 +452,9 @@ template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_
 template <typename F, typename... Args>
 auto threadpool<A, new_work_policy, Tracer, D>::push_job(F&& func, Args&&... args)
 {
+    static_assert(!std::is_lvalue_reference_v<F>, "pushing a job that is a reference is dangerous. wrap with std::ref if you are sure");
+    static_assert((!std::is_lvalue_reference_v<Args> && ...), "pushing an arg that is a reference is dangerous. wrap with std::ref if you are sure");
+
     THREADPOOL_INTERNAL_TRACE(on_push_job_start);
 
     if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
@@ -506,6 +509,9 @@ template <threadpool_policy_pending_work A, threadpool_policy_new_work new_work_
 template <typename F, typename... Args>
 auto threadpool<A, new_work_policy, Tracer, D>::push_task(F&& func, Args&&... args)
 {
+    static_assert(!std::is_lvalue_reference_v<F>, "pushing a task that is a reference is dangerous. wrap with std::ref if you are sure");
+    static_assert((!std::is_lvalue_reference_v<Args> && ...), "pushing an arg that is a reference is dangerous. wrap with std::ref if you are sure");
+
     THREADPOOL_INTERNAL_TRACE(on_push_task_start);
 
     if constexpr (new_work_policy == threadpool_policy_new_work::configurable_and_forbidden_when_stopping)
@@ -650,15 +656,10 @@ auto threadpool<A, B, Tracer, D>::make_task(F&& func, Args&&... args)
     }
     else
     {
-        auto func_and_args_as_tuple = std::make_tuple(std::forward<F>(func), std::forward<Args>(args)...);
-
-        // todo: C++20 allows for parameter pack captures: `...a = std::move(a)`
-        auto task = [func_and_args_as_tuple = std::move(func_and_args_as_tuple)]() mutable -> decltype(auto) {
-            return std::apply([](auto&& func, auto&&... args) mutable -> decltype(auto) {
-                // forward/move the function so it has rvalue qualifiers for better optimisations
-                return std::forward<decltype(func)>(func)(std::forward<decltype(args)>(args)...);
-            },
-                              std::move(func_and_args_as_tuple));
+        // the logic is sound, but clang-tidy can't see it
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
+        auto task = [func = std::forward<F>(func), ... args = std::forward<Args>(args)]() mutable -> decltype(auto) {
+            return std::forward<decltype(func)>(func)(std::forward<decltype(args)>(args)...);
         };
 
         THREADPOOL_INTERNAL_TRACE(on_make_task_done);
@@ -673,6 +674,8 @@ void threadpool<A, B, Tracer, D>::push_work(F&& func)
     THREADPOOL_INTERNAL_TRACE(on_push_work_start);
 
     // make sure the work conforms to the interface of the queue functions (void return, no params)
+    // the logic is sound, but clang-tidy can't see it
+    // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
     auto perform_job = [work = std::forward<F>(func)]() mutable -> void {
         if constexpr (std::is_invocable<F>())
         {

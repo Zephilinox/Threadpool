@@ -49,7 +49,7 @@ static auto benchmark_threadpool_sleepy_task_push(benchmark::State& state) -> vo
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < sleepy_task_count; ++i)
-            producers.push_task(produce);
+            producers.push_task(std::ref(produce));
 
         producers.wait_all();
     }

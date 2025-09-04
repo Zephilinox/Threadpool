@@ -54,7 +54,7 @@ static auto benchmark_threadpool_heavy_task_push(benchmark::State& state) -> voi
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < heavy_task_count; ++i)
-            producers.push_task(produce);
+            producers.push_task(std::ref(produce));
 
         producers.wait_all();
     }

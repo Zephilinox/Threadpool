@@ -258,8 +258,13 @@ TEST_SUITE("Pushing Tasks & Jobs")
             CHECK_EQ(argument.destructor, expected_moves + 1); // note: reductions are good, but wanna know when they happen
         };
 
-        test(false, 4);
-        test(true, 5);
+#if defined(_WIN32) && !defined(__clang__)
+        test(false, 2);
+        test(true, 3);
+#else
+        test(false, 3);
+        test(true, 4);
+#endif
     }
 
     TEST_CASE("Lambdas with no captures, returns, or parameters")
@@ -459,11 +464,10 @@ TEST_SUITE("Pushing Tasks & Jobs")
         auto test = [](bool is_task) {
             zx::threadpool pool(1);
 
-            ConstOnlyFunctor cof;
-            push_job_or_task_and_wait(is_task, pool, cof);
+            push_job_or_task_and_wait(is_task, pool, ConstOnlyFunctor());
 
             const ConstOnlyFunctor cof2;
-            push_job_or_task_and_wait(is_task, pool, cof2);
+            push_job_or_task_and_wait(is_task, pool, std::ref(cof2));
 
             pool.wait_all();
             CHECK_EQ(pool.work_executed_total(), 2);
@@ -478,8 +482,8 @@ TEST_SUITE("Pushing Tasks & Jobs")
         auto test = [](bool is_task) {
             zx::threadpool pool(1);
 
-            NormalFunctor nf;
-            push_job_or_task_and_wait(is_task, pool, nf);
+            const NormalFunctor nf;
+            push_job_or_task_and_wait(is_task, pool, std::ref(nf));
 
             pool.wait_all();
             CHECK_EQ(pool.work_executed_total(), 1);
@@ -495,14 +499,16 @@ TEST_SUITE("Pushing Tasks & Jobs")
         auto test = []() {
             threadpool_function2<> pool(1);
 
-            NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
-            pool.push_task(nfmop, std::make_unique<int>(5));
+            const NormalFunctorMoveOnlyParam<std::unique_ptr<int>> nfmop;
+            pool.push_task(NormalFunctorMoveOnlyParam(nfmop), std::make_unique<int>(5));
 
-            NormalFunctorMoveOnlyParam<std::unique_ptr<int>&&> nfmop3;
-            pool.push_task(nfmop3, std::make_unique<int>(5));
+            pool.push_task(NormalFunctorMoveOnlyParam<std::unique_ptr<int>>{}, std::make_unique<int>(5));
+
+            const NormalFunctorMoveOnlyParam<std::unique_ptr<int>&&> nfmop3;
+            pool.push_task(NormalFunctorMoveOnlyParam(nfmop3), std::make_unique<int>(5));
 
             pool.wait_all();
-            CHECK_EQ(pool.work_executed_total(), 2);
+            CHECK_EQ(pool.work_executed_total(), 3);
         };
 
         test();

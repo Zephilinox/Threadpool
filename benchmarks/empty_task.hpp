@@ -49,7 +49,7 @@ static auto benchmark_threadpool_empty_task_push(benchmark::State& state) -> voi
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < empty_task_count; ++i)
-            producers.push_task(produce);
+            producers.push_task(std::ref(produce));
 
         producers.wait_all();
     }
@@ -85,7 +85,7 @@ static auto benchmark_threadpool_empty_job_push(benchmark::State& state) -> void
     for (auto _ : state) // NOLINT(clang-analyzer-deadcode.DeadStores)
     {
         for (int i = 0; i < empty_task_count; ++i)
-            futures.emplace_back(producers.push_job(produce));
+            futures.emplace_back(producers.push_job(std::ref(produce)));
 
         for (int i = 0; i < empty_task_count; ++i)
             futures[i]->wait();
