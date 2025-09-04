@@ -76,7 +76,7 @@ target_include_directories(threadpool INTERFACE
     $<BUILD_INTERFACE:${threadpool_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_compile_features(threadpool INTERFACE cxx_std_17)
+target_compile_features(threadpool INTERFACE cxx_std_23)
 if (UNIX AND NOT APPLE)
     target_link_libraries(threadpool INTERFACE "m" "atomic" "pthread")
 endif () 
