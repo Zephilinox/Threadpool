@@ -3,7 +3,7 @@ include(SetSystemIncludes)
 CPMAddPackage(
     NAME doctest
     GITHUB_REPOSITORY onqtam/doctest
-    GIT_TAG 2.4.5
+    GIT_TAG v2.4.12
     EXCLUDE_FROM_ALL "YES"
     OPTIONS
         DOCTEST_WITH_MAIN_IN_STATIC_LIB "OFF"

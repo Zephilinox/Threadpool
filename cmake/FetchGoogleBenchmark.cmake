@@ -3,7 +3,7 @@ include(SetSystemIncludes)
 CPMAddPackage(
     NAME benchmark
     GITHUB_REPOSITORY google/benchmark
-    VERSION 1.5.2
+    VERSION 1.9.4
     OPTIONS
         "BENCHMARK_ENABLE_TESTING OFF"
         "BENCHMARK_ENABLE_INSTALL OFF"
@@ -12,7 +12,7 @@ CPMAddPackage(
 )
 
 set_property(TARGET benchmark PROPERTY CXX_STANDARD_REQUIRED TRUE)
-set_property(TARGET benchmark PROPERTY CXX_STANDARD 17)
+set_property(TARGET benchmark PROPERTY CXX_STANDARD 23)
 set_property(TARGET benchmark PROPERTY CXX_EXTENSIONS OFF)
 
 set_target_properties(benchmark PROPERTIES FOLDER dependencies)

@@ -1,14 +1,28 @@
-//SELF
+// SELF
 
-//LIBS
+// LIBS
 #include <doctest/doctest.h>
 #include <threadpool/threadpool.hpp>
 #include <threadpool/tracers/tracing_console_logger.hpp>
 #include <function2/function2.hpp>
 
-//STD
+// STD
 #include <memory>
 #include <iostream>
+
+// it doesn't know how to nicely print std::atomic
+// so let's help it
+namespace doctest
+{
+template <typename T>
+struct StringMaker<std::atomic<T>>
+{
+    static String convert(const std::atomic<T>& value)
+    {
+        return doctest::toString(value.load());
+    }
+};
+} // namespace doctest
 
 struct ExpensiveType
 {
@@ -118,13 +132,13 @@ struct CounterFunctor
         : name(n + " ")
         , state(state)
     {
-        //std::cout << name << "construct CounterFunctor\n";
+        // std::cout << name << "construct CounterFunctor\n";
         state->constructor++;
     }
 
     ~CounterFunctor()
     {
-        //std::cout << name << "destroy CounterFunctor\n";
+        // std::cout << name << "destroy CounterFunctor\n";
         state->destructor++;
     }
 
@@ -133,7 +147,7 @@ struct CounterFunctor
         , state(rhs.state)
     {
         state->copy_constructor++;
-        //std::cout << name << "copy construct CounterFunctor\n";
+        // std::cout << name << "copy construct CounterFunctor\n";
     }
 
     CounterFunctor(CounterFunctor&& rhs) noexcept
@@ -141,7 +155,7 @@ struct CounterFunctor
         , state(rhs.state)
     {
         state->move_constructor++;
-        //std::cout << name << "move construct CounterFunctor\n";
+        // std::cout << name << "move construct CounterFunctor\n";
     }
 
     CounterFunctor& operator=(const CounterFunctor& rhs)
@@ -152,7 +166,7 @@ struct CounterFunctor
         name = rhs.name;
         state = rhs.state;
         state->copy_assign++;
-        //std::cout << name << "copy assign CounterFunctor\n";
+        // std::cout << name << "copy assign CounterFunctor\n";
         return *this;
     }
 
@@ -161,35 +175,35 @@ struct CounterFunctor
         name = std::move(rhs.name);
         state = rhs.state;
         state->move_assign++;
-        //std::cout << name << "move assign CounterFunctor\n";
+        // std::cout << name << "move assign CounterFunctor\n";
         return *this;
     }
 
     template <typename T2>
     void operator()(T2&&) &
     {
-        //std::cout << name << "called CounterFunctor&\n";
+        // std::cout << name << "called CounterFunctor&\n";
         state->lvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&&) &&
     {
-        //std::cout << name << "called CounterFunctor&& \n";
+        // std::cout << name << "called CounterFunctor&& \n";
         state->rvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&&) const&
     {
-        //std::cout << name << "called const CounterFunctor&\n";
+        // std::cout << name << "called const CounterFunctor&\n";
         state->const_lvalue_call++;
     }
 
     template <typename T2>
     void operator()(T2&&) const&&
     {
-        //std::cout << name << "called const CounterFunctor&\n";
+        // std::cout << name << "called const CounterFunctor&\n";
         state->const_rvalue_call++;
     }
 
@@ -246,7 +260,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
                 argument.rvalue_call++;
                 CHECK_EQ(argument, function);
                 CHECK_EQ(argument.constructor, 1);
-                CHECK_EQ(argument.move_constructor, expected_moves); //note: reductions are good, but wanna know when they happen
+                CHECK_EQ(argument.move_constructor, expected_moves); // note: reductions are good, but wanna know when they happen
                 CHECK_EQ(argument.copy_constructor, 0);
                 CHECK_EQ(argument.copy_assign, 0);
                 CHECK_EQ(argument.move_assign, 0);
@@ -259,21 +273,11 @@ TEST_SUITE("Pushing Tasks & Jobs")
             // therefore we don't check right away, but after the destruction of the threadpool, it should be accurate
             // I don't think blocking until the last moved-from objects destructor finishes is important functionality...?
             // We add 1 as destructor calls should be moves + constructor, which we've already checked is 1
-            CHECK_EQ(argument.destructor, expected_moves + 1); //note: reductions are good, but wanna know when they happen
+            CHECK_EQ(argument.destructor, expected_moves + 1); // note: reductions are good, but wanna know when they happen
         };
 
-//yeah...
-#if defined(_WIN32) && defined(__clang__)
-        test(false, 5);
-#else
         test(false, 4);
-#endif
-
-#if defined(__unix__) || defined(__APPLE__) || defined(__clang__)
-        test(true, 6);
-#else
-        test(true, 5); //todo: why is this less?
-#endif
+        test(true, 5);
     }
 
     TEST_CASE("Lambdas with no captures, returns, or parameters")
@@ -370,7 +374,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Lambdas can have unique_ptr&& arguments")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 
@@ -387,7 +391,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Lambdas can have auto unique_ptr arguments")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 
@@ -404,7 +408,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Lambdas can have auto&& unique_ptr arguments")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 
@@ -421,7 +425,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Function2 Lambdas can have unique_ptr captures")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 
@@ -441,7 +445,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("Function2 Lambdas can move unique_ptr captures")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 
@@ -505,7 +509,7 @@ TEST_SUITE("Pushing Tasks & Jobs")
 
     TEST_CASE("NormalFunctorMoveOnlyParam for std::unique_ptr is valid")
     {
-        //todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
+        // todo: bugs in compilers standard library: https://godbolt.org/z/7EoKqT8eK
         auto test = []() {
             threadpool_function2<> pool(1);
 

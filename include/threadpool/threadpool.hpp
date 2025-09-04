@@ -1,6 +1,6 @@
 #pragma once
 
-//STD
+// STD
 #include <thread>
 #include <functional>
 #include <queue>
@@ -192,14 +192,14 @@ private:
     auto push_task_new_work_forbid(F&& func, Args&&... args) -> bool;
 
     std::queue<Function> m_pending_work;
-    //also ensures m_pending_work_to_process is always in-sync with the queue
+    // also ensures m_pending_work_to_process is always in-sync with the queue
     std::mutex m_pending_work_mutex;
     std::condition_variable m_change_in_pending_work;
 
     std::vector<std::thread> m_threads;
     std::vector<std::atomic<unsigned int>> m_total_work_executed;
     std::atomic<bool> m_allow_new_work = true;
-    //todo: should probably be an enum
+    // todo: should probably be an enum
     std::atomic<bool> m_shutting_down = false;
     std::atomic<bool> m_is_stopping = false;
     std::atomic<bool> m_is_stopped = false;
@@ -264,7 +264,7 @@ threadpool<pending_work_policy, new_work_policy, Tracer, D>::~threadpool() noexc
         THREADPOOL_INTERNAL_TRACE(on_leave_pending_work_unfinished_start);
         std::scoped_lock lock(m_pending_work_mutex);
 
-        //clear the m_pending_work
+        // clear the m_pending_work
         m_pending_work = {};
         m_pending_work_to_process = 0;
         THREADPOOL_INTERNAL_TRACE(on_leave_pending_work_unfinished_done);
@@ -603,9 +603,9 @@ auto threadpool<A, B, Tracer, D>::make_worker(unsigned int thread_id)
             work_lock.unlock();
 
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_executing_start<type>, thread_id);
-            //if the work is a future and someone blocks on it then
-            // between the future becoming ready and someone checking the total work
-            // there could be a race, so instead we increment before the call
+            // if the work is a future and someone blocks on it then
+            //  between the future becoming ready and someone checking the total work
+            //  there could be a race, so instead we increment before the call
             ++m_total_work_executed[thread_id];
             std::move(job)();
             THREADPOOL_INTERNAL_TRACE_TEMPLATE(on_worker_executing_done<type>, thread_id);
@@ -643,7 +643,7 @@ auto threadpool<A, B, Tracer, D>::make_task(F&& func, Args&&... args)
 {
     THREADPOOL_INTERNAL_TRACE(on_make_task_start);
 
-    //if there are no arguments then we can just use the function directly, we'll wrap it later
+    // if there are no arguments then we can just use the function directly, we'll wrap it later
     if constexpr (sizeof...(args) == 0)
     {
         THREADPOOL_INTERNAL_TRACE(on_make_task_done);
@@ -653,10 +653,10 @@ auto threadpool<A, B, Tracer, D>::make_task(F&& func, Args&&... args)
     {
         auto func_and_args_as_tuple = std::make_tuple(std::forward<F>(func), std::forward<Args>(args)...);
 
-        //todo: C++20 allows for parameter pack captures: `...a = std::move(a)`
+        // todo: C++20 allows for parameter pack captures: `...a = std::move(a)`
         auto task = [func_and_args_as_tuple = std::move(func_and_args_as_tuple)]() mutable -> decltype(auto) {
             return std::apply([](auto&& func, auto&&... args) mutable -> decltype(auto) {
-                //forward/move the function so it has rvalue qualifiers for better optimisations
+                // forward/move the function so it has rvalue qualifiers for better optimisations
                 return std::forward<decltype(func)>(func)(std::forward<decltype(args)>(args)...);
             },
                               std::move(func_and_args_as_tuple));
@@ -673,7 +673,7 @@ void threadpool<A, B, Tracer, D>::push_work(F&& func)
 {
     THREADPOOL_INTERNAL_TRACE(on_push_work_start);
 
-    //make sure the work conforms to the interface of the queue functions (void return, no params)
+    // make sure the work conforms to the interface of the queue functions (void return, no params)
     auto perform_job = [work = std::forward<F>(func)]() mutable -> void {
         if constexpr (std::is_invocable<F>())
         {

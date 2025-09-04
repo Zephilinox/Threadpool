@@ -2,7 +2,7 @@ include(CodeCoverage)
 
 function(configure_target target use_coverage)
     set_property(TARGET ${target} PROPERTY CXX_STANDARD_REQUIRED TRUE)
-    set_property(TARGET ${target} PROPERTY CXX_STANDARD 17)
+    set_property(TARGET ${target} PROPERTY CXX_STANDARD 23)
     set_property(TARGET ${target} PROPERTY CXX_EXTENSIONS OFF)
 
     if (use_coverage)

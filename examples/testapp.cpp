@@ -1,8 +1,8 @@
-//LIBS
+// LIBS
 #include <threadpool/threadpool.hpp>
 #include <threadpool/tracers/tracing_console_logger.hpp>
 
-//STD
+// STD
 #include <iostream>
 
 int main()
@@ -22,11 +22,10 @@ int main()
 
     auto lambda = [&](int something) -> int {
         std::this_thread::sleep_for(std::chrono::milliseconds{ sleep_ms });
-        //++result;
         volatile int result = 0;
         for (int i = 0; i < task_iterations; ++i)
         {
-            ++result;
+            result += 1;
         }
         return something;
     };
@@ -58,8 +57,8 @@ int main()
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
 
     {
-        zx::threadpool_console_logging<zx::threadpool_policy_pending_work::wait_for_work_to_finish> producer(1);
-        zx::threadpool_console_logging<zx::threadpool_policy_pending_work::wait_for_work_to_finish> consumer(1);
+        zx::threadpool<zx::threadpool_policy_pending_work::wait_for_work_to_finish> producer(1);
+        zx::threadpool<zx::threadpool_policy_pending_work::wait_for_work_to_finish> consumer(1);
 
         for (int i = 0; i < task_count; ++i)
         {
@@ -72,8 +71,8 @@ int main()
             }));
         }
 
+        producer.wait_all();
         consumer.wait_all();
-        //producer.wait_all();
     }
 
     const auto end_time = std::chrono::high_resolution_clock::now();

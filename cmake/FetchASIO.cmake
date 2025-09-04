@@ -3,7 +3,7 @@ include(SetSystemIncludes)
 CPMAddPackage(
     NAME asio
     GITHUB_REPOSITORY chriskohlhoff/asio
-    GIT_TAG asio-1-19-2
+    GIT_TAG asio-1-36-0
     DOWNLOAD_ONLY
 )
 
@@ -13,7 +13,7 @@ add_library(asio::asio ALIAS asio)
 target_include_directories(asio INTERFACE
     "${asio_SOURCE_DIR}/asio/include"
 )
-target_compile_features(asio INTERFACE cxx_std_17)
+target_compile_features(asio INTERFACE cxx_std_23)
 if (UNIX AND NOT APPLE)
     target_link_libraries(asio INTERFACE "m" "atomic" "pthread")
 endif () 
