@@ -69,7 +69,7 @@ public:
     using worker_t = detail::worker_t;
     using threadpool_function_t = Function;
 
-    explicit threadpool(unsigned int thread_count = std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U));
+    explicit threadpool(unsigned int thread_count = std::max(std::thread::hardware_concurrency(), 2U) - 1U);
 
     threadpool(const threadpool& other) = delete;
     threadpool(threadpool&& other) = delete;
