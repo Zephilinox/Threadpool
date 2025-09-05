@@ -2,9 +2,9 @@
 
 [![Threadpool](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml/badge.svg)](https://github.com/Zephilinox/Threadpool/actions/workflows/threadpool.yml) [![codecov](https://codecov.io/gh/Zephilinox/Threadpool/branch/main/graph/badge.svg?token=n9P9btRBNe)](https://codecov.io/gh/Zephilinox/Threadpool)
 
-A configurable but slow threadpool, backed by `std::queue` and `std::mutex`
+A configurable but slow header-only threadpool, backed by `std::queue` and `std::mutex`
 
-C++17 is required
+C++23 is required
 
 # Basic Usage
 
@@ -26,7 +26,11 @@ int main()
 }
 ```
 
-The default number of threads is `std::max(std::min(std::thread::hardware_concurrency(), 1U) - 1U, 1U)` which will be between 1 and 1 less than the max number of logical cores on your system.
+Here we specified 2 threads but otherwise the default number of threads will be between 1 and 1 less than the max number of logical cores on your system.
+
+# Installing
+
+Simply copy `include/threadpool/threadpool.hpp` to your codebase. You can optionally use the provided Tracers in `include/threadpool/tracers/`, but they are not required and not used by default.
 
 # Work
 
@@ -53,7 +57,74 @@ You could instead wait for all work to complete. Note that if other threads are 
 zx::threadpool pool(1);
 pool.push_task([](){ /* do nothing */ });
 pool.wait_all();
+// or wait for every piece of work to begin executing
+pool.wait_all_pending();
 ```
+
+### Processing
+
+There are multiple options for processing queued up work, if you don't want to leave it under the threadpools control.
+
+```cpp
+zx::threadpool pool(0);
+pool.push_task([](){ /* do nothing*/ });
+// help everything along, without waiting for every piece of work to finish
+pool.process_all_pending();
+// or just once
+pool.process_once();
+// or cooperatively, forever
+while (true)
+{
+    pool.process_once();
+    std::this_thread::yield();
+}
+```
+
+In these cases the processing occurs "outside of" the Threadpool, which has the following effects:
+
+1. The thread_index is equal to the number of threads, i.e `pool.thread_count()`
+2. The work is considered to be handled "by others", i.e `pool.work_executed_by_others()`
+
+Note that this currently isn't as optimal as allowing the Threadpool to handle the processing automatically, as it has to construct and destruct a worker each time
+
+### Statistics
+
+While the Threadpool is running it will gather some statistics about the work being done.
+
+```cpp
+zx::threadpool pool;
+for (unsigned int thread_index : poolthread_count())
+{
+    pool.work_executed(thread_index);
+}
+
+pool.work_executed_by_others();
+pool.work_executed_total();
+pool.work_pending();
+pool.work_executing();
+pool.work_total();
+```
+
+### Other
+
+There are a few ways to control or inspect the Threadpool at runtime:
+
+```cpp
+zx::threadpool pool;
+pool.is_allowing_new_work();
+pool.is_stopping_or_stopped();
+pool.is_stopped();
+
+pool.allow_new_work(false);
+// returns false, never executed
+pool.push_task([](){});
+
+pool.allow_new_work(true);
+// returns true, scheduled for execution
+pool.push_task([](){});
+```
+
+At compile time, we have policies.
 
 # Policies
 
@@ -77,9 +148,9 @@ The `zx::threadpool_policy_pending_work` policy determines whether work in the q
 
 Note that if the `New Work` policy is used to `always_allow` that work can be added while the destructor blocks, which could cause the destructor to never complete.
 
-Changing the policy to `zx::threadpool_policy_pending_work::leave_work_unfinished` will cause any pending work to be ignored when stopping, therefore work that was pushed will never execute.
+Changing the policy to `zx::threadpool_policy_pending_work::leave_work_unfinished` will cause any pending work to be ignored when stopping, therefore work that was pushed will never execute unless it is already executing.
 
-Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc), as the job isn't guaranteed to execute.
+Note that when `leave_work_unfinished` is used the `std::future` returned from `push_job` may throw with a [broken_promise exception](https://en.cppreference.com/w/cpp/thread/future_errc) when the job is not executed. This is to prevent waiting forever on the returned future.
 
 ```cpp
 std::optional<std::future<void>> maybe_future;
@@ -89,8 +160,10 @@ std::optional<std::future<void>> maybe_future;
     maybe_future = pool.push_job([](){ /* do nothing */ });
 }
 
+ //will throw a broken_promise exception if the work didn't execute before the pool was destroyed
 if (maybe_future)
-    maybe_future->wait(); //may throw a broken_promise exception
+    maybe_future->wait();
+
 ```
 
 # Tracing
@@ -159,4 +232,38 @@ will output
 [INFO] threadpool: finished destruction
 ```
 
-The messages can be customised by providing your own tracing class instead of providing the tracing class `zx::threadpool_tracing_logger` with a logger class. You also aren't limited to logging, the internals of the threadpool could be be modified or inspected.
+The messages can be customised by providing your own tracing class instead of providing the tracing class `zx::threadpool_tracing_logger` with a logger class. You also aren't limited to logging, the internals of the threadpool could be modified or inspected.
+
+# Advanced
+
+The Threadpool is actually defined as:
+
+```cpp
+template <
+    threadpool_policy_pending_work pending_work_policy = threadpool_policy_pending_work::wait_for_work_to_finish,
+    threadpool_policy_new_work new_work_policy = threadpool_policy_new_work::configurable_and_forbidden_when_stopping,
+    typename Tracer = void,
+    typename Function = std::function<void()>>
+class threadpool final
+{
+    // ...
+}
+```
+
+As such you also have control over the type-erased backend used to store tasks and jobs within the Threadpool.
+One such alternative implementation is https://github.com/Naios/function2. Here is how that could be defined:
+
+```cpp
+template <
+    zx::threadpool_policy_pending_work A = zx::threadpool_policy_pending_work::wait_for_work_to_finish,
+    zx::threadpool_policy_new_work B = zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping,
+    typename C = void>
+using threadpool_fu2 = zx::threadpool<A, B, C, fu2::unique_function<void()>>;
+```
+
+Which you can use like normal, but with different performance characteristics and only supporting move-only types
+
+```cpp
+threadpool_fu2 pool;
+pool.push_task([](){});
+```

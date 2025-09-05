@@ -194,7 +194,7 @@ template <
     zx::threadpool_policy_pending_work A = zx::threadpool_policy_pending_work::wait_for_work_to_finish,
     zx::threadpool_policy_new_work B = zx::threadpool_policy_new_work::configurable_and_forbidden_when_stopping,
     typename C = void>
-using threadpool_function2 = zx::threadpool<A, B, void, fu2::unique_function<void()>>;
+using threadpool_function2 = zx::threadpool<A, B, C, fu2::unique_function<void()>>;
 
 namespace
 {
